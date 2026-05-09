@@ -31,21 +31,20 @@ def post_tick(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             snippet = raw.decode("utf-8", errors="replace")[:500]
             log_error(
                 "bridge.post_tick",
-                "HTTP {} {!r} http://{}:{}{} body={!r}".format(
-                    response.status,
-                    response.reason,
-                    HOST,
-                    PORT,
-                    PATH,
-                    snippet,
-                ),
+                f"HTTP {response.status} {response.reason!r} http://{HOST}:{PORT}{PATH} body={snippet!r}",
             )
+
             return None
         return json.loads(raw.decode("utf-8"))
-    except (OSError, http.client.HTTPException, ValueError, json.JSONDecodeError) as exc:
+    except (
+        OSError,
+        http.client.HTTPException,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
         log_error(
             "bridge.post_tick",
-            "{}:{}{} request failed".format(HOST, PORT, PATH),
+            f"{HOST}:{PORT}{PATH} request failed",
             exc,
         )
         return None
