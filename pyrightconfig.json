@@ -1,7 +1,16 @@
 {
-  "include": ["npc_ai_mod"],
-  "extraPaths": ["EA/core", "EA/simulation"],
+  "include": ["npc_ai_mod", "ai_service"],
   "exclude": ["EA/**/*.pyc"],
-  "pythonVersion": "3.7",
-  "typeCheckingMode": "basic"
+  "typeCheckingMode": "basic",
+  "extraPaths": [".", "EA/core", "EA/simulation"],
+  "executionEnvironments": [
+    {
+      "root": "./npc_ai_mod",
+      "pythonVersion": "3.7"
+    },
+    {
+      "root": "./ai_service",
+      "pythonVersion": "3.10"
+    }
+  ]
 }

@@ -18,7 +18,7 @@ any AI backend you like as long as it speaks the bridge protocol.
 | Tool | Version | Purpose |
 |---|---|---|
 | Python | 3.7.x | Compile mod bytecode (must match game's Python) |
-| Python | any modern | Run `build.py` / tooling |
+| Python | ≥ 3.10 | Run `ai_service` (FastAPI), `build.py`, tooling |
 | pycdc | latest | Decompile EA scripts for IDE type support |
 | The Sims 4 | any | Game |
 
@@ -36,6 +36,12 @@ Open `.env` and fill in your paths:
 
 - `MODS_DIR` — absolute path to your Sims 4 `Mods` folder
 - `GAME_DIR` — absolute path to the Sims 4 `Data/Simulation/Gameplay` folder
+
+#### Cursor / VS Code
+
+Pyright resolves `from ai_service...` **only when the workspace root is the repository directory** (so the `ai_service` package is visible). Prefer **Open Workspace from File…** → `npc-ai-mod.code-workspace`, or **Open Folder…** → repo root **not** single subfolders (`npc_ai_mod/` alone breaks those imports).
+
+A multi-root workspace with **three roots** (`/`, `npc_ai_mod`, `ai_service`) is **discouraged** here: nesting duplicates paths and fights import resolution unless you rework `PYTHONPATH` per folder.
 
 ### 2. Install Python 3.7
 
@@ -75,6 +81,18 @@ python build.py
 Both scripts compile `npc_ai_mod/` into `npc_ai_mod.ts4script` and copy it to
 your `MODS_DIR`. If `MODS_DIR` is not set they compile only and skip the copy.
 
+### 5. Run the AI bridge (development)
+
+Python 3.10+ recommended for the FastAPI process (separate from Python 3.7 used only to compile the mod).
+
+```bash
+cd ai_service
+uv sync
+uv run uvicorn ai_service.main:app --host 127.0.0.1 --port 8765
+```
+
+See [`ai_service/README.md`](ai_service/README.md).
+
 ## Project structure
 
 ```
@@ -84,18 +102,23 @@ npc_ai_mod/
   sim_state.py   — read and serialize NPC Sim data
   bridge.py      — HTTP client to the external AI service
   director.py    — apply AI decisions onto NPC Sims
+ai_service/
+  main.py / models.py / router_v1.py / game_types.py — FastAPI + EA type hints (see ai_service/README.md)
 build.sh         — Linux/macOS build script
 build.py         — cross-platform build script
 decompile_ea.sh  — extract + decompile EA scripts for IDE support
 .env.example     — environment variable template
-pyrightconfig.json — Pyright config (points to EA/ for type resolution)
+ai_service/pyproject.toml — FastAPI service (use `uv` in `ai_service/`)
+pyrightconfig.json — Pyright: repo root `.` + `EA/` on extraPaths; Python 3.7 vs 3.10 per subtree
+.vscode/settings.json — Pylance `python.analysis.extraPaths` when opening the folder
+npc-ai-mod.code-workspace — open this workspace (repo root — recommended)
+PROTOCOL.md     — HTTP API between the mod and `ai_service`
 ```
 
 ## Contributing
 
-Fork the repo, create a branch, and open a pull request. The AI service
-protocol (what `bridge.py` sends/receives) will be documented in `PROTOCOL.md`
-once it stabilises.
+Fork the repo, create a branch, and open a pull request. Keep
+[`PROTOCOL.md`](PROTOCOL.md) in sync when changing request/response shapes.
 
 ## Notes
 

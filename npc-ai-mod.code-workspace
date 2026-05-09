@@ -1,0 +1,19 @@
+{
+  "folders": [
+    {
+      "name": "root",
+      "path": "."
+    },
+    {
+      "name": "npc_ai_mod",
+      "path": "npc_ai_mod"
+    },
+    {
+      "name": "ai_service",
+      "path": "ai_service",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/ai_service/.venv/bin/python"
+      }
+    }
+  ]
+}
