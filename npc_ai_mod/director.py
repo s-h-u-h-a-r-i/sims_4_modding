@@ -4,19 +4,24 @@ director.py — apply AI decisions to NPC Sims.
 Receives decisions from bridge.py and pushes the corresponding Sims 4
 interactions / behaviour changes onto the target Sims.
 """
-from typing import TYPE_CHECKING, Any
+
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, Dict
+
+from . import bridge
 
 if TYPE_CHECKING:
     from sims.sim_info import SimInfo
 
 
 def on_zone_loaded() -> None:
-    """
-    Called once per save-load (from hooks.py).
-    Kick off the first state snapshot + decision cycle.
-    """
-    # TODO: call sim_state.get_world_state(), bridge.send_state(), then apply
-    raise NotImplementedError
+    payload: Dict[str, Any] = {
+        "tick": {
+            "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        },
+        "world": {"lot_id": None, "zone_id": None, "sims": []},
+    }
+    bridge.post_tick(payload)
 
 
 def apply_decisions(decisions: "list[dict[str, Any]]") -> None:

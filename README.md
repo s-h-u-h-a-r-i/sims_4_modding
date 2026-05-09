@@ -15,12 +15,12 @@ any AI backend you like as long as it speaks the bridge protocol.
 
 ## Requirements
 
-| Tool | Version | Purpose |
-|---|---|---|
-| Python | 3.7.x | Compile mod bytecode (must match game's Python) |
-| Python | ≥ 3.10 | Run `ai_service` (FastAPI), `build.py`, tooling |
-| pycdc | latest | Decompile EA scripts for IDE type support |
-| The Sims 4 | any | Game |
+| Tool       | Version | Purpose                                         |
+| ---------- | ------- | ----------------------------------------------- |
+| Python     | 3.7.x   | Compile mod bytecode (must match game's Python) |
+| Python     | ≥ 3.10  | Run `ai_service` (FastAPI), `build.py`, tooling |
+| pycdc      | latest  | Decompile EA scripts for IDE type support       |
+| The Sims 4 | any     | Game                                            |
 
 ## Setup
 
@@ -47,11 +47,11 @@ A multi-root workspace with **three roots** (`/`, `npc_ai_mod`, `ai_service`) is
 
 The game runs Python 3.7, so mod bytecode must be compiled with it.
 
-| Platform | Command |
-|---|---|
-| Arch Linux | `yay -S python37` |
-| Ubuntu/Debian | `sudo add-apt-repository ppa:deadsnakes/ppa && sudo apt install python3.7` |
-| Windows | [python.org/downloads](https://www.python.org/downloads/release/python-3718/) |
+| Platform      | Command                                                                       |
+| ------------- | ----------------------------------------------------------------------------- |
+| Arch Linux    | `yay -S python37`                                                             |
+| Ubuntu/Debian | `sudo add-apt-repository ppa:deadsnakes/ppa && sudo apt install python3.7`    |
+| Windows       | [python.org/downloads](https://www.python.org/downloads/release/python-3718/) |
 
 ### 3. Set up IDE type support (optional but recommended)
 
@@ -69,11 +69,13 @@ is gitignored.
 ### 4. Build and deploy
 
 **Linux/macOS:**
+
 ```bash
 ./build.sh
 ```
 
 **Windows or any platform:**
+
 ```bash
 python build.py
 ```
@@ -88,7 +90,7 @@ Python 3.10+ recommended for the FastAPI process (separate from Python 3.7 used 
 ```bash
 cd ai_service
 uv sync
-uv run uvicorn ai_service.main:app --host 127.0.0.1 --port 8765
+uv run uvicorn ai_service.__main__:app --host 127.0.0.1 --port 8765
 ```
 
 See [`ai_service/README.md`](ai_service/README.md).

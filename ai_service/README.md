@@ -23,7 +23,7 @@ From this directory:
 
 ```bash
 uv sync
-uv run uvicorn ai_service.main:app --host 127.0.0.1 --port 8765
+uv run uvicorn ai_service.__main__:app --host 127.0.0.1 --port 8765
 ```
 
 Smoke check:
