@@ -1,0 +1,12 @@
+# Local environment — personal paths, never commit
+.env
+
+# Decompiled EA game scripts — large, regenerate with decompile_ea.sh
+EA/
+
+# Compiled mod output
+*.ts4script
+
+# Python
+__pycache__/
+.venv/

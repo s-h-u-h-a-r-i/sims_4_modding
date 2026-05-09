@@ -1,0 +1,9 @@
+[project]
+name = "npc-ai-mod"
+version = "0.1.0"
+description = "Sims 4 mod bridging the game to an external AI service for NPC control"
+readme = "README.md"
+# Note: this version is for dev tooling only.
+# The mod itself is compiled with Python 3.7 to match the game runtime.
+requires-python = ">=3.10"
+dependencies = []

@@ -1,0 +1,7 @@
+{
+  "include": ["npc_ai_mod"],
+  "extraPaths": ["EA/core", "EA/simulation"],
+  "exclude": ["EA/**/*.pyc"],
+  "pythonVersion": "3.7",
+  "typeCheckingMode": "basic"
+}
