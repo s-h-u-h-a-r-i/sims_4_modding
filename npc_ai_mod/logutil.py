@@ -2,7 +2,7 @@ import os
 import traceback
 from typing import Optional
 
-__all__ = ("clear_session_log", "log_info", "log_error")
+__all__ = ("clear_session_log", "log_debug", "log_info", "log_error")
 
 FILE_LOG_NAME = "npc_ai_mod.log"
 
@@ -40,13 +40,15 @@ def clear_session_log() -> None:
         pass
 
 
+def log_debug(tag: str, detail: str) -> None:
+    _append(f"[DEBUG/{tag}] {detail}")
+
+
 def log_info(tag: str, detail: str) -> None:
-    """Append a general informational message to the companion log file."""
     _append(f"[{tag}] {detail}")
 
 
 def log_error(tag: str, detail: str, exc: Optional[BaseException] = None) -> None:
-    """Append an error to the companion log file, optionally with a traceback."""
     body = f"[ERROR/{tag}] {detail}"
     if exc is not None:
         body = f"{body}\n{exc!r}\n{traceback.format_exc()}"
