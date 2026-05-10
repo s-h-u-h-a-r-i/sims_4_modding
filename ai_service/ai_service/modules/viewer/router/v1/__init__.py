@@ -1,16 +1,16 @@
 import asyncio
 import json
 from dataclasses import asdict
-from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from ai_service.core.constants import STATIC_DIR
 from ai_service.deps import TickStoreDep, TickStoreWsDep, ViewerHubWsDep
 
 __all__ = ("router",)
 
-_VIEWER_HTML = Path(__file__).resolve().parents[4] / "static" / "viewer.html"
+_VIEWER_HTML = STATIC_DIR / "viewer.html"
 
 router = APIRouter(prefix="/viewer")
 

@@ -6,11 +6,12 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from ai_service import __version__
 from ai_service.modules.tick.router import tick_v1_router
 from ai_service.modules.tick.services import TickStore
-from ai_service.modules.viewer.router import viewer_v1_router
+from ai_service.modules.viewer.router import STATIC_DIR, viewer_v1_router
 from ai_service.modules.viewer.services import ViewerBroadcastHub
 
 
@@ -42,6 +43,12 @@ app = FastAPI(
 
 app.include_router(tick_v1_router, prefix="/v1", tags=["tick-v1"])
 app.include_router(viewer_v1_router, prefix="/v1", tags=["viewer-v1"])
+
+app.mount(
+    "/v1/viewer/static",
+    StaticFiles(directory=str(STATIC_DIR)),
+    name="viewer-static",
+)
 
 
 @app.get("/health")

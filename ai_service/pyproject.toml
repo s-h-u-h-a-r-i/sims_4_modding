@@ -13,4 +13,8 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-artifacts = ["ai_service/static/viewer.html"]
+artifacts = [
+    "ai_service/static/viewer.html",
+    "ai_service/static/viewer.css",
+    "ai_service/static/viewer.js",
+]
