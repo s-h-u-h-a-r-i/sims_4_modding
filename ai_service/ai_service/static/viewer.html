@@ -3,140 +3,369 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NPC AI — last tick</title>
+    <title>NPC AI — viewer</title>
     <style>
       :root {
         --bg: #0f1419;
         --fg: #e6ecf3;
         --muted: #8b949e;
         --panel: #1a222c;
+        --panel2: #212c38;
         --border: #2d3743;
         --accent: #58a6ff;
         --warn: #d29922;
+        --green: #3fb950;
+        --red: #f85149;
       }
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
-        margin: 0;
-        padding: 1rem 1.25rem 2rem;
-        font-family: ui-sans-serif, system-ui, sans-serif;
         background: var(--bg);
         color: var(--fg);
-        line-height: 1.45;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 0.875rem;
       }
-      h1 {
-        font-size: 1.125rem;
-        font-weight: 600;
-        margin: 0 0 0.75rem;
+
+      /* ── Header ── */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        gap: 1rem;
       }
-      .meta {
-        font-size: 0.8125rem;
+      #status { color: var(--muted); font-size: 0.8rem; }
+      #status.error { color: var(--warn); }
+
+      .ai-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
         color: var(--muted);
-        margin-bottom: 1rem;
+        user-select: none;
       }
-      .meta strong {
-        color: var(--accent);
-        font-weight: 600;
+      .toggle-btn {
+        position: relative;
+        width: 40px;
+        height: 22px;
+        background: var(--border);
+        border-radius: 11px;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s;
+        flex-shrink: 0;
       }
-      .status-error {
-        color: var(--warn);
+      .toggle-btn.on { background: var(--green); }
+      .toggle-btn::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 16px;
+        height: 16px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform 0.2s;
       }
-      section {
+      .toggle-btn.on::after { transform: translateX(18px); }
+
+      /* ── Grid ── */
+      main { padding: 1.25rem; }
+      .sim-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+      }
+      @media (max-width: 900px) { .sim-grid { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 480px) { .sim-grid { grid-template-columns: 1fr; } }
+
+      /* ── Card ── */
+      .sim-card {
         background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        margin-bottom: 1rem;
+        border-radius: 10px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: border-color 0.15s;
       }
-      section h2 {
-        margin: 0 0 0.5rem;
-        font-size: 0.75rem;
+      .sim-card:hover { border-color: var(--accent); }
+      .sim-card.expanded { border-color: var(--accent); }
+
+      .sim-card .info {
+        padding: 1rem 1.1rem 1.1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+      .sim-card .name {
+        font-weight: 600;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sim-card .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .tag {
+        font-size: 0.65rem;
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.04em;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        border: 1px solid;
+      }
+      .tag.npc   { color: var(--warn);   border-color: var(--warn);   background: #2a220a; }
+      .tag.player{ color: var(--green);  border-color: var(--green);  background: #0d1f12; }
+      .tag.age   { color: var(--accent); border-color: var(--accent); background: #0d1829; }
+      .tag.gender{ color: var(--muted);  border-color: var(--border); background: transparent; }
+
+      .sim-card .detail {
+        font-size: 0.7rem;
         color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* ── Expanded details ── */
+      .sim-card .expanded-body {
+        display: none;
+        padding: 0 1.1rem 1.1rem;
+        flex-direction: column;
+        gap: 0.75rem;
+        border-top: 1px solid var(--border);
+        margin-top: 0.1rem;
+      }
+      .sim-card.expanded .expanded-body { display: flex; }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.25rem 0.75rem;
+        font-size: 0.72rem;
+      }
+      .detail-grid .dk { color: var(--muted); }
+      .detail-grid .dv { color: var(--fg); font-variant-numeric: tabular-nums; }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding-top: 0.25rem;
+      }
+      .action-btn {
+        font-size: 0.7rem;
         font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.3rem 0.65rem;
+        border-radius: 5px;
+        border: 1px solid var(--border);
+        background: var(--panel2);
+        color: var(--fg);
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
       }
-      pre {
-        margin: 0;
-        font-size: 0.78rem;
-        white-space: pre-wrap;
-        word-break: break-word;
-        overflow-x: auto;
-        font-family: ui-monospace, 'Cascadia Code', monospace;
-      }
-      a {
-        color: var(--accent);
-      }
-      code {
-        font-size: 0.85em;
-      }
+      .action-btn:hover { border-color: var(--accent); background: #1a2a3a; }
+      .action-btn:active { background: #1e3249; }
     </style>
   </head>
   <body>
-    <h1>Last bridge tick</h1>
-    <p class="meta" id="meta">
-      Live updates over <strong id="wsHint">WebSocket</strong>. Debug:
-      <a id="endpointLink" href="#">state.json</a>
-    </p>
-    <p class="meta" id="stamp">Connecting…</p>
-    <section>
-      <h2>tick_request</h2>
-      <pre id="req">{}</pre>
-    </section>
-    <section>
-      <h2>tick_response</h2>
-      <pre id="res">{}</pre>
-    </section>
+    <header>
+      <div id="status">Connecting…</div>
+      <div class="ai-toggle">
+        <span id="aiLabel">AI</span>
+        <button class="toggle-btn" id="aiToggle" title="Toggle AI"></button>
+      </div>
+    </header>
+    <main>
+      <div class="sim-grid" id="simGrid"></div>
+    </main>
+
     <script>
-      const stampEl = document.getElementById('stamp');
-      const reqEl = document.getElementById('req');
-      const resEl = document.getElementById('res');
+      const statusEl  = document.getElementById('status');
+      const simGrid   = document.getElementById('simGrid');
+      const aiToggle  = document.getElementById('aiToggle');
+      const aiLabel   = document.getElementById('aiLabel');
 
-      const stateHref =
-        window.location.origin + window.location.pathname.replace(/\/?$/, '') + '/state.json';
-      document.getElementById('endpointLink').href = stateHref;
+      let ws = null;
+      let aiEnabled = true;
 
-      const wsPath = window.location.pathname.replace(/\/?$/, '') + '/ws';
-      const wsUrl =
-        (window.location.protocol === 'https:' ? 'wss:' : 'ws:') +
-        '//' +
-        window.location.host +
-        wsPath;
-      document.getElementById('wsHint').textContent = wsUrl;
+      function cap(s) {
+        if (!s) return '';
+        return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+      }
+
+      function setAiState(enabled) {
+        aiEnabled = enabled;
+        aiToggle.classList.toggle('on', enabled);
+        aiLabel.textContent = 'AI ' + (enabled ? 'on' : 'off');
+      }
+
+      aiToggle.addEventListener('click', () => {
+        const next = !aiEnabled;
+        setAiState(next);
+        wsSend({ type: 'set_ai_enabled', enabled: next });
+      });
+
+      function wsSend(msg) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(msg));
+        }
+      }
+
+      function sendCommand(simId, action) {
+        wsSend({ type: 'command', action, sim_id: simId });
+      }
+
+      function buildDetailGrid(sim) {
+        const fields = [
+          ['ID',        sim.sim_id],
+          ['Age',       cap(sim.age)],
+          ['Gender',    cap(sim.gender)],
+          ['Household', sim.household_id ?? '—'],
+          ['Zone',      sim.zone_id ?? '—'],
+        ];
+        const grid = document.createElement('div');
+        grid.className = 'detail-grid';
+        for (const [k, v] of fields) {
+          const dk = document.createElement('span');
+          dk.className = 'dk';
+          dk.textContent = k;
+          const dv = document.createElement('span');
+          dv.className = 'dv';
+          dv.textContent = v ?? '—';
+          grid.append(dk, dv);
+        }
+        return grid;
+      }
+
+      function buildActions(sim) {
+        const wrap = document.createElement('div');
+        wrap.className = 'actions';
+
+        const goHome = document.createElement('button');
+        goHome.className = 'action-btn';
+        goHome.textContent = 'Go Home';
+        goHome.addEventListener('click', (e) => {
+          e.stopPropagation();
+          sendCommand(sim.sim_id_str || String(sim.sim_id), 'go_home');
+        });
+        wrap.appendChild(goHome);
+
+        return wrap;
+      }
+
+      function renderSims(sims) {
+        // Preserve expanded state across re-renders
+        const expanded = new Set(
+          [...simGrid.querySelectorAll('.sim-card.expanded')]
+            .map(el => el.dataset.simId)
+        );
+
+        simGrid.innerHTML = '';
+        if (!Array.isArray(sims)) return;
+
+        for (const sim of sims) {
+          const simIdStr = String(sim.sim_id);
+          const card = document.createElement('div');
+          card.className = 'sim-card' + (expanded.has(simIdStr) ? ' expanded' : '');
+          card.dataset.simId = sim.sim_id_str || simIdStr;
+
+          // ── Summary ──
+          const info = document.createElement('div');
+          info.className = 'info';
+
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.textContent = [sim.first_name, sim.last_name].filter(Boolean).join(' ') || '(unknown)';
+          name.title = name.textContent;
+
+          const tags = document.createElement('div');
+          tags.className = 'tags';
+
+          const npcTag = document.createElement('span');
+          npcTag.className = 'tag ' + (sim.is_npc ? 'npc' : 'player');
+          npcTag.textContent = sim.is_npc ? 'NPC' : 'Player';
+          tags.appendChild(npcTag);
+
+          if (sim.age) {
+            const ageTag = document.createElement('span');
+            ageTag.className = 'tag age';
+            ageTag.textContent = cap(sim.age);
+            tags.appendChild(ageTag);
+          }
+          if (sim.gender) {
+            const gTag = document.createElement('span');
+            gTag.className = 'tag gender';
+            gTag.textContent = cap(sim.gender);
+            tags.appendChild(gTag);
+          }
+
+          info.append(name, tags);
+
+          if (sim.household_id != null) {
+            const hhEl = document.createElement('div');
+            hhEl.className = 'detail';
+            hhEl.textContent = 'HH ' + sim.household_id;
+            info.appendChild(hhEl);
+          }
+
+          // ── Expanded body ──
+          const expandedBody = document.createElement('div');
+          expandedBody.className = 'expanded-body';
+          expandedBody.append(buildDetailGrid(sim), buildActions(sim));
+
+          card.append(info, expandedBody);
+
+          card.addEventListener('click', () => {
+            card.classList.toggle('expanded');
+          });
+
+          simGrid.appendChild(card);
+        }
+      }
 
       function applySnapshot(data) {
-        const when = data.received_at_utc_iso || '(no ticks yet)';
-        stampEl.textContent = 'Seq ' + (data.seq ?? '—') + ' · Received ' + when;
-        stampEl.classList.remove('status-error');
-        reqEl.textContent = JSON.stringify(data.tick_request ?? null, null, 2);
-        resEl.textContent = JSON.stringify(data.tick_response ?? null, null, 2);
+        const sims = data?.tick_request?.world?.sims ?? [];
+        statusEl.textContent =
+          'Seq ' + (data.seq ?? '—') + ' · ' +
+          (sims.length ? sims.length + ' sim' + (sims.length !== 1 ? 's' : '') + ' on lot' : 'no sims on lot');
+        statusEl.className = '';
+        setAiState(data.ai_enabled ?? true);
+        renderSims(sims);
       }
 
-      function connectWs() {
-        const ws = new WebSocket(wsUrl);
+      function connect() {
+        const wsUrl =
+          (location.protocol === 'https:' ? 'wss:' : 'ws:') +
+          '//' + location.host +
+          location.pathname.replace(/\/?$/, '') + '/ws';
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => {
+          statusEl.textContent = 'Connected…';
+          statusEl.className = '';
+        };
         ws.onmessage = (ev) => {
-          try {
-            applySnapshot(JSON.parse(ev.data));
-          } catch (e) {
-            stampEl.textContent = 'Bad WebSocket payload: ' + String(e);
-            stampEl.classList.add('status-error');
+          try { applySnapshot(JSON.parse(ev.data)); }
+          catch (e) {
+            statusEl.textContent = String(e);
+            statusEl.className = 'error';
           }
         };
-        ws.onopen = () => {
-          stampEl.textContent = 'Connected — waiting for snapshot…';
-          stampEl.classList.remove('status-error');
-        };
         ws.onclose = () => {
-          stampEl.textContent = 'WebSocket closed — reconnecting in 2s…';
-          stampEl.classList.add('status-error');
-          setTimeout(connectWs, 2000);
+          statusEl.textContent = 'Disconnected — reconnecting…';
+          statusEl.className = 'error';
+          setTimeout(connect, 2000);
         };
-        ws.onerror = () => {
-          stampEl.classList.add('status-error');
-        };
+        ws.onerror = () => { statusEl.className = 'error'; };
       }
-      connectWs();
+      connect();
     </script>
   </body>
 </html>

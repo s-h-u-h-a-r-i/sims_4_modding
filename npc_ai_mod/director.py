@@ -8,7 +8,7 @@ import alarms
 from clock import interval_in_real_seconds
 
 from . import bridge, sim_state, tick_throttle
-from .logutil import log_error
+from .logutil import log_error, log_info
 from .utils import iso_utc_now
 
 __all__ = ("director",)
@@ -38,13 +38,39 @@ class Director:
         if not tick_throttle.allow_send():
             return
         try:
-            bridge.post_tick(self._build_payload())
+            response = bridge.post_tick(self._build_payload())
+            if response:
+                decisions = response.get("decisions") or []
+                if decisions:
+                    log_info("Director", f"received {len(decisions)} decision(s): {decisions}")
+                    self.apply_decisions(decisions)
         except Exception as exc:
             log_error(
                 "Director.push_tick_if_due",
                 "unexpected error building/sending tick",
                 exc,
             )
+
+    def apply_decisions(self, decisions: "List[Dict[str, Any]]") -> None:
+        for decision in decisions:
+            try:
+                action = decision.get("action")
+                sim_id = decision.get("sim_id")
+                if not action or sim_id is None:
+                    continue
+                sim_info = self._find_sim_info(int(str(sim_id)))
+                if sim_info is None:
+                    log_info("Director.apply_decisions", f"sim_id={sim_id} not found in manager")
+                    continue
+                if action == "go_home":
+                    self._apply_go_home(sim_info)
+                else:
+                    log_error(
+                        "Director.apply_decisions",
+                        f"unknown action {action!r} for sim_id={sim_id}",
+                    )
+            except Exception as exc:
+                log_error("Director.apply_decisions", f"error applying {decision!r}", exc)
 
     def _on_alarm_fire(self, _handle: Any) -> None:
         self.push_tick_if_due()
@@ -81,13 +107,33 @@ class Director:
         """Called when leaving a zone; cancels the recurring alarm."""
         self._cancel_alarm()
 
-    def apply_decisions(self, decisions: "List[Dict[str, Any]]") -> None:
-        """Push a list of AI decisions onto the appropriate NPCs."""
-        raise NotImplementedError
+    def _find_sim_info(self, sim_id: int) -> "Optional[SimInfo]":
+        import services
+        manager = services.sim_info_manager()
+        if manager is None:
+            return None
+        return manager.get(sim_id)
 
-    def push_interaction(self, sim_info: "SimInfo", interaction_id: int) -> None:
-        """Queue a specific interaction on a Sim by its affordance GUID."""
-        raise NotImplementedError
+    def _apply_go_home(self, sim_info: "SimInfo") -> None:
+        try:
+            from interactions.context import InteractionContext, InteractionSource, QueueInsertStrategy
+            from interactions.priority import Priority
+
+            sim = sim_info.get_sim_instance()
+            if sim is None:
+                log_info("Director._apply_go_home", f"sim {sim_info.sim_id} is not instanced, skipping")
+                return
+            go_home_affordance = sim_info.SIM_SKEWER_AFFORDANCES[0]
+            context = InteractionContext(
+                sim,
+                InteractionSource.SCRIPT,
+                Priority.High,
+                insert_strategy=QueueInsertStrategy.NEXT,
+            )
+            result = sim.push_super_affordance(go_home_affordance, None, context)
+            log_info("Director._apply_go_home", f"push_super_affordance({sim_info.first_name} {sim_info.last_name}) -> {result}")
+        except Exception as exc:
+            log_error("Director._apply_go_home", "failed to push go_home", exc)
 
 
 director = Director()

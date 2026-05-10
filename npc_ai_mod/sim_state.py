@@ -40,6 +40,7 @@ def serialize_sim(sim_info: "SimInfo") -> "Dict[str, Any]":
     """Convert a SimInfo into a JSON-serialisable dict."""
     return {
         "sim_id": int(sim_info.id),
+        "sim_id_str": str(sim_info.id),
         "first_name": str(sim_info.first_name),
         "last_name": str(sim_info.last_name),
         "age": sim_info.age.name if sim_info.age is not None else None,

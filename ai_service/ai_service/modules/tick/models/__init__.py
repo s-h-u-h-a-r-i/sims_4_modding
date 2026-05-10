@@ -17,3 +17,4 @@ class TickSnapshot:
     received_at_utc_iso: str | None
     tick_request: Dict[str, Any] | None
     tick_response: Dict[str, Any] | None
+    ai_enabled: bool = True

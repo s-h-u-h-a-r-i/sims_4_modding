@@ -2,13 +2,12 @@ import os
 import traceback
 from typing import Optional
 
-__all__ = ("clear_session_log", "log_error")
+__all__ = ("clear_session_log", "log_info", "log_error")
 
 FILE_LOG_NAME = "npc_ai_mod.log"
 
 
 def _file_log_path() -> str:
-
     norm = os.path.normpath(os.path.abspath(__file__))
     parts = norm.split(os.sep)
     for i, segment in enumerate(parts):
@@ -18,6 +17,17 @@ def _file_log_path() -> str:
             return os.path.join(parent, FILE_LOG_NAME)
     # Loose scripts (no ts4script in path): log next to this package.
     return os.path.join(os.path.dirname(norm), FILE_LOG_NAME)
+
+
+def _append(body: str) -> None:
+    path = _file_log_path()
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(body)
+            if not body.endswith("\n"):
+                fh.write("\n")
+    except OSError:
+        pass
 
 
 def clear_session_log() -> None:
@@ -30,16 +40,14 @@ def clear_session_log() -> None:
         pass
 
 
+def log_info(tag: str, detail: str) -> None:
+    """Append a general informational message to the companion log file."""
+    _append(f"[{tag}] {detail}")
+
+
 def log_error(tag: str, detail: str, exc: Optional[BaseException] = None) -> None:
-    """Append a bridge/runtime error to the companion log file."""
-    body = f"[{tag}] {detail}"
+    """Append an error to the companion log file, optionally with a traceback."""
+    body = f"[ERROR/{tag}] {detail}"
     if exc is not None:
         body = f"{body}\n{exc!r}\n{traceback.format_exc()}"
-    path = _file_log_path()
-    try:
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write(body)
-            if not body.endswith("\n"):
-                fh.write("\n")
-    except OSError:
-        pass
+    _append(body)

@@ -16,6 +16,7 @@ fi
 MODS_DIR="${MODS_DIR:-}"
 MOD_NAME="npc_ai_mod"
 SCRIPT="${MOD_NAME}.ts4script"
+DEPLOY_DIR="${MODS_DIR}/${MOD_NAME}"
 
 # ── Preflight ────────────────────────────────────────────────────────────────
 if ! command -v python3.7 &>/dev/null; then
@@ -64,8 +65,9 @@ if [[ ! -d "${MODS_DIR}" ]]; then
 fi
 
 echo "Deploying to Mods..."
-cp "${SCRIPT}" "${MODS_DIR}/"
-echo "  → ${MODS_DIR}/${SCRIPT}"
+mkdir -p "${DEPLOY_DIR}"
+cp "${SCRIPT}" "${DEPLOY_DIR}/"
+echo "  → ${DEPLOY_DIR}/${SCRIPT}"
 
 echo ""
 echo "Done. Restart the game and load a save."

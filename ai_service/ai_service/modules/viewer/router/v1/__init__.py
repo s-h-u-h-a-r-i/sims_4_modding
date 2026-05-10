@@ -1,4 +1,5 @@
 import asyncio
+import json
 from dataclasses import asdict
 from pathlib import Path
 
@@ -23,9 +24,22 @@ async def viewer_ws(
         await websocket.send_json(asdict(store.get_snapshot()))
         while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+                raw = await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+                msg = json.loads(raw)
+                msg_type = msg.get("type")
+
+                if msg_type == "command":
+                    store.push_command(msg)
+
+                elif msg_type == "set_ai_enabled":
+                    store.set_ai_enabled(bool(msg.get("enabled", True)))
+                    # Immediately reflect change in all connected viewers
+                    await hub.broadcast_json(asdict(store.get_snapshot()))
+
             except asyncio.TimeoutError:
                 continue
+            except (json.JSONDecodeError, AttributeError):
+                pass
     except WebSocketDisconnect:
         pass
     finally:
