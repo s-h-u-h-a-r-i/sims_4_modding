@@ -19,4 +19,4 @@ def _on_zone_teardown(self, *args, **kwargs):
 
 
 VenueService.on_loading_screen_animation_finished = _on_venue_loading_finished  # type: ignore[attr-defined]
-Zone.on_teardown = _on_zone_teardown  # type: ignore[attr-defined]
+Zone.on_teardown = _on_zone_teardown
