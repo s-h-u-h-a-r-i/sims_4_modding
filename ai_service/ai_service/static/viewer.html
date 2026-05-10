@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NPC AI — viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <script>
       (function () {
         var base = location.pathname.replace(/\/?$/, '/');
@@ -15,14 +21,34 @@
     </script>
   </head>
   <body>
-    <header>
+    <header class="u-flex-between u-gap-md">
       <div id="status">Connecting…</div>
-      <div class="ai-toggle">
+      <div class="ai-toggle u-flex-center u-gap-sm">
         <span id="aiLabel">AI</span>
         <button type="button" class="toggle-btn" id="aiToggle" title="Toggle AI"></button>
       </div>
     </header>
     <main>
+      <div class="viewer-toolbar u-flex-between u-gap-md">
+        <label class="toolbar-field">
+          <span class="toolbar-label">Sort</span>
+          <select id="sortSelect" class="toolbar-select" title="Order sims within each group">
+            <option value="name">Name</option>
+            <option value="tick">Game order</option>
+            <option value="household">Household</option>
+            <option value="age">Age</option>
+            <option value="kind">Type (player / NPC)</option>
+          </select>
+        </label>
+        <label class="toolbar-field">
+          <span class="toolbar-label">Show</span>
+          <select id="filterSelect" class="toolbar-select" title="Which sims to display">
+            <option value="all">Everyone</option>
+            <option value="npc">NPCs only</option>
+            <option value="player">Played sims only</option>
+          </select>
+        </label>
+      </div>
       <div class="sim-grid" id="simGrid"></div>
     </main>
 

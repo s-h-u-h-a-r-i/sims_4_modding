@@ -8,6 +8,27 @@ let aiEnabled = true;
 /** @type {Map<string, HTMLElement>} */
 const cardBySimId = new Map();
 
+/** Snapshot `tick_request.world.sims` from last frame (expand/collapse reordering). */
+let lastGridSims = [];
+
+const LS_SORT = 'viewer.sort';
+const LS_FILTER = 'viewer.filter';
+const SORT_VALUES = new Set(['name', 'tick', 'household', 'age', 'kind']);
+const FILTER_VALUES = new Set(['all', 'npc', 'player']);
+
+function loadPref(key, allowed, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    if (v && allowed.has(v)) return v;
+  } catch (e) {
+    /* ignore */
+  }
+  return fallback;
+}
+
+let sortMode = loadPref(LS_SORT, SORT_VALUES, 'name');
+let filterMode = loadPref(LS_FILTER, FILTER_VALUES, 'all');
+
 function stableSimId(sim) {
   if (!sim) return '';
   return String(sim.sim_id_str != null ? sim.sim_id_str : sim.sim_id);
@@ -16,6 +37,94 @@ function stableSimId(sim) {
 function cap(s) {
   if (!s) return '';
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function simDisplayName(sim) {
+  if (!sim) return '';
+  return [sim.first_name, sim.last_name].filter(Boolean).join(' ') || '(unknown)';
+}
+
+function buildTickOrder(sims) {
+  const m = new Map();
+  if (!Array.isArray(sims)) return m;
+  for (let i = 0; i < sims.length; i++) {
+    const id = stableSimId(sims[i]);
+    if (id && !m.has(id)) m.set(id, i);
+  }
+  return m;
+}
+
+function cmpHousehold(ha, hb) {
+  if (ha == null && hb == null) return 0;
+  if (ha == null) return 1;
+  if (hb == null) return -1;
+  console.log(ha, hb);
+  if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+  return String(ha).localeCompare(String(hb), undefined, { numeric: true });
+}
+
+function sortCompareSims(aSim, bSim, mode, tickOrder) {
+  const ida = stableSimId(aSim);
+  const idb = stableSimId(bSim);
+  const tieIds = ida.localeCompare(idb, undefined, { numeric: true });
+  const byName = () =>
+    simDisplayName(aSim).localeCompare(simDisplayName(bSim), undefined, { sensitivity: 'base' }) ||
+    tieIds;
+
+  switch (mode) {
+    case 'tick': {
+      const ia = ida ? tickOrder.get(ida) ?? 1e9 : 1e9;
+      const ib = idb ? tickOrder.get(idb) ?? 1e9 : 1e9;
+      if (ia !== ib) return ia - ib;
+      return tieIds;
+    }
+    case 'household': {
+      const h = cmpHousehold(aSim?.household_id, bSim?.household_id);
+      if (h !== 0) return h;
+      return byName();
+    }
+    case 'age': {
+      const ac = (aSim?.age ?? '').toString();
+      const bc = (bSim?.age ?? '').toString();
+      const c = ac.localeCompare(bc, undefined, { sensitivity: 'base' });
+      if (c !== 0) return c;
+      return byName();
+    }
+    case 'kind': {
+      const na = aSim?.is_npc ? 1 : 0;
+      const nb = bSim?.is_npc ? 1 : 0;
+      if (na !== nb) return na - nb;
+      return byName();
+    }
+    default:
+      return byName();
+  }
+}
+
+function sortCompareCards(cardA, cardB, mode, tickOrder) {
+  const sa = cardA._viewerLastSim;
+  const sb = cardB._viewerLastSim;
+  if (!sa && !sb) {
+    return String(cardA.dataset.simId || '').localeCompare(
+      String(cardB.dataset.simId || ''),
+      undefined,
+      {
+        numeric: true,
+      }
+    );
+  }
+  if (!sa) return 1;
+  if (!sb) return -1;
+  return sortCompareSims(sa, sb, mode, tickOrder);
+}
+
+function filterPasses(card, mode) {
+  if (mode === 'all') return true;
+  const sim = card._viewerLastSim;
+  if (!sim) return false;
+  if (mode === 'npc') return !!sim.is_npc;
+  if (mode === 'player') return !sim.is_npc;
+  return true;
 }
 
 function setAiState(enabled) {
@@ -49,19 +158,17 @@ function buildInteractionsSection(sim) {
     const empty = document.createElement('div');
     empty.className = 'interaction-section';
     empty.innerHTML =
-      '<h4>Interactions</h4><div class="detail" style="margin-top:0.25rem">Idle — nothing running or queued</div>';
+      '<h4>Interactions</h4><div class="detail detail--spaced">Idle — nothing running or queued</div>';
     wrap.appendChild(empty);
     return wrap;
   }
 
   function pill(row) {
     const el = document.createElement('span');
-    el.className = 'int-pill';
+    el.className = 'int-pill u-ellipsis u-font-mono';
     el.textContent = row.class_name || '(unknown)';
     el.title =
-      (row.class_name || '') +
-      ' · id ' +
-      (row.interaction_id_str || row.interaction_id || '');
+      (row.class_name || '') + ' · id ' + (row.interaction_id_str || row.interaction_id || '');
     if (row.interaction_id_str) el.dataset.interactionId = String(row.interaction_id_str);
     return el;
   }
@@ -151,7 +258,7 @@ function buildActions(sim) {
 
 function fillInfoFromSim(infoEl, sim, extraTagLabel) {
   const nameEl = infoEl.querySelector('.name');
-  const full = [sim.first_name, sim.last_name].filter(Boolean).join(' ') || '(unknown)';
+  const full = simDisplayName(sim);
   nameEl.textContent = full;
   nameEl.title = full;
 
@@ -190,7 +297,7 @@ function fillInfoFromSim(infoEl, sim, extraTagLabel) {
   if (sim.household_id != null) {
     if (!hhEl) {
       hhEl = document.createElement('div');
-      hhEl.className = 'detail hh';
+      hhEl.className = 'detail hh u-ellipsis';
       infoEl.appendChild(hhEl);
     }
     hhEl.textContent = 'HH ' + sim.household_id;
@@ -250,7 +357,7 @@ function createCard(sim) {
   const info = document.createElement('div');
   info.className = 'info';
   const name = document.createElement('div');
-  name.className = 'name';
+  name.className = 'name u-ellipsis';
   const tags = document.createElement('div');
   tags.className = 'tags';
   info.append(name, tags);
@@ -262,14 +369,69 @@ function createCard(sim) {
   card.addEventListener('click', (e) => {
     if (e.target.closest('button')) return;
     card.classList.toggle('expanded');
+    reorderSimGrid(lastGridSims);
   });
 
   updateCardLive(card, sim);
   return card;
 }
 
+/**
+ * Expanded on-lot first, then other on-lot, then off-lot. Within each tier, order
+ * follows `sortMode`; hidden sims (per `filterMode`) sort after visible ones.
+ */
+function reorderSimGrid(sims) {
+  const tickOrder = buildTickOrder(sims);
+  const cards = [...cardBySimId.values()];
+  const tierOf = (card) => {
+    if (card.dataset.present === '0') return 2;
+    if (card.classList.contains('expanded')) return 0;
+    return 1;
+  };
+  cards.sort((a, b) => {
+    const pa = filterPasses(a, filterMode) ? 0 : 1;
+    const pb = filterPasses(b, filterMode) ? 0 : 1;
+    if (pa !== pb) return pa - pb;
+    const ta = tierOf(a);
+    const tb = tierOf(b);
+    if (ta !== tb) return ta - tb;
+    return sortCompareCards(a, b, sortMode, tickOrder);
+  });
+  for (const c of cards) {
+    c.hidden = !filterPasses(c, filterMode);
+    simGrid.appendChild(c);
+  }
+}
+
+function initViewerControls() {
+  const sortSelect = document.getElementById('sortSelect');
+  const filterSelect = document.getElementById('filterSelect');
+  if (!sortSelect || !filterSelect) return;
+  sortSelect.value = sortMode;
+  filterSelect.value = filterMode;
+  sortSelect.addEventListener('change', () => {
+    sortMode = sortSelect.value;
+    try {
+      localStorage.setItem(LS_SORT, sortMode);
+    } catch (e) {
+      /* ignore */
+    }
+    reorderSimGrid(lastGridSims);
+  });
+  filterSelect.addEventListener('change', () => {
+    filterMode = filterSelect.value;
+    try {
+      localStorage.setItem(LS_FILTER, filterMode);
+    } catch (e) {
+      /* ignore */
+    }
+    reorderSimGrid(lastGridSims);
+  });
+}
+
 function renderSims(sims) {
   if (!Array.isArray(sims)) sims = [];
+  lastGridSims = sims;
   const present = new Set();
 
   for (const sim of sims) {
@@ -292,6 +454,8 @@ function renderSims(sims) {
       simGrid.appendChild(card);
     }
   }
+
+  reorderSimGrid(sims);
 }
 
 function applySnapshot(data) {
@@ -310,8 +474,7 @@ function applySnapshot(data) {
   if (onLot && notHere) {
     statusEl.textContent = seq + ' · ' + onLot + ' on lot · ' + notHere + ' not here';
   } else if (onLot) {
-    statusEl.textContent =
-      seq + ' · ' + onLot + ' sim' + (onLot !== 1 ? 's' : '') + ' on lot';
+    statusEl.textContent = seq + ' · ' + onLot + ' sim' + (onLot !== 1 ? 's' : '') + ' on lot';
   } else if (notHere) {
     statusEl.textContent = seq + ' · no one on lot · ' + notHere + ' not here';
   } else {
@@ -348,5 +511,5 @@ function connect() {
     statusEl.className = 'error';
   };
 }
+initViewerControls();
 connect();
-    
