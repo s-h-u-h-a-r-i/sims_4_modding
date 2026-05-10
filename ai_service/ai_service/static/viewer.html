@@ -76,11 +76,10 @@
   <body>
     <h1>Last bridge tick</h1>
     <p class="meta" id="meta">
-      Poll: <strong id="pollHint"></strong>. Override with URL
-      <code>?poll_ms=1000</code> (milliseconds). Endpoint:
+      Live updates over <strong id="wsHint">WebSocket</strong>. Debug:
       <a id="endpointLink" href="#">state.json</a>
     </p>
-    <p class="meta" id="stamp">Waiting for first request…</p>
+    <p class="meta" id="stamp">Connecting…</p>
     <section>
       <h2>tick_request</h2>
       <pre id="req">{}</pre>
@@ -90,40 +89,54 @@
       <pre id="res">{}</pre>
     </section>
     <script>
-      function pollMsFromQuery() {
-        const q = new URLSearchParams(window.location.search).get('poll_ms');
-        if (!q) return 5000;
-        const n = parseInt(q, 10);
-        if (!Number.isFinite(n) || n < 200) return 200;
-        return n;
-      }
-      const pollMs = pollMsFromQuery();
-      document.getElementById('pollHint').textContent = pollMs + ' ms';
+      const stampEl = document.getElementById('stamp');
+      const reqEl = document.getElementById('req');
+      const resEl = document.getElementById('res');
 
       const stateHref =
         window.location.origin + window.location.pathname.replace(/\/?$/, '') + '/state.json';
       document.getElementById('endpointLink').href = stateHref;
 
-      async function pull() {
-        const stampEl = document.getElementById('stamp');
-        const reqEl = document.getElementById('req');
-        const resEl = document.getElementById('res');
-        try {
-          const r = await fetch(stateHref, { cache: 'no-store' });
-          if (!r.ok) throw new Error('HTTP ' + r.status);
-          const data = await r.json();
-          const when = data.received_at_utc_iso || '(no ticks yet)';
-          stampEl.textContent = 'Seq ' + (data.seq ?? '—') + ' · Received ' + when;
-          stampEl.classList.remove('status-error');
-          reqEl.textContent = JSON.stringify(data.tick_request ?? null, null, 2);
-          resEl.textContent = JSON.stringify(data.tick_response ?? null, null, 2);
-        } catch (e) {
-          stampEl.textContent = 'Fetch failed — is the server running? ' + String(e);
-          stampEl.classList.add('status-error');
-        }
+      const wsPath = window.location.pathname.replace(/\/?$/, '') + '/ws';
+      const wsUrl =
+        (window.location.protocol === 'https:' ? 'wss:' : 'ws:') +
+        '//' +
+        window.location.host +
+        wsPath;
+      document.getElementById('wsHint').textContent = wsUrl;
+
+      function applySnapshot(data) {
+        const when = data.received_at_utc_iso || '(no ticks yet)';
+        stampEl.textContent = 'Seq ' + (data.seq ?? '—') + ' · Received ' + when;
+        stampEl.classList.remove('status-error');
+        reqEl.textContent = JSON.stringify(data.tick_request ?? null, null, 2);
+        resEl.textContent = JSON.stringify(data.tick_response ?? null, null, 2);
       }
-      pull();
-      setInterval(pull, pollMs);
+
+      function connectWs() {
+        const ws = new WebSocket(wsUrl);
+        ws.onmessage = (ev) => {
+          try {
+            applySnapshot(JSON.parse(ev.data));
+          } catch (e) {
+            stampEl.textContent = 'Bad WebSocket payload: ' + String(e);
+            stampEl.classList.add('status-error');
+          }
+        };
+        ws.onopen = () => {
+          stampEl.textContent = 'Connected — waiting for snapshot…';
+          stampEl.classList.remove('status-error');
+        };
+        ws.onclose = () => {
+          stampEl.textContent = 'WebSocket closed — reconnecting in 2s…';
+          stampEl.classList.add('status-error');
+          setTimeout(connectWs, 2000);
+        };
+        ws.onerror = () => {
+          stampEl.classList.add('status-error');
+        };
+      }
+      connectWs();
     </script>
   </body>
 </html>

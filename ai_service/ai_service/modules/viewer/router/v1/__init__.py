@@ -1,9 +1,11 @@
+import asyncio
 from dataclasses import asdict
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from ai_service.deps import ViewerHubWsDep
 from ai_service.modules.tick.services import TickStore
 
 __all__ = ("router",)
@@ -11,6 +13,23 @@ __all__ = ("router",)
 _VIEWER_HTML = Path(__file__).resolve().parents[4] / "static" / "viewer.html"
 
 router = APIRouter(prefix="/viewer")
+
+
+@router.websocket("/ws")
+async def viewer_ws(websocket: WebSocket, hub: ViewerHubWsDep) -> None:
+    await hub.register(websocket)
+    try:
+        store = TickStore()
+        await websocket.send_json(asdict(store.get_snapshot()))
+        while True:
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+            except asyncio.TimeoutError:
+                continue
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await hub.unregister(websocket)
 
 
 @router.get("", response_class=HTMLResponse, response_model=None)
