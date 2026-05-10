@@ -30,6 +30,12 @@ const cardBySimId = new Map();
 /** Snapshot `tick_request.world.sims` from last frame (expand/collapse reordering). */
 let lastGridSims = [];
 
+/**
+ * decision_history from the latest snapshot: { sim_id_str: DecisionRecord[] }
+ * @type {Record<string, Array<object>>}
+ */
+let lastDecisionHistory = {};
+
 let sortMode = loadPref(LS_SORT, SORT_VALUES, 'name');
 let filterMode = loadPref(LS_FILTER, FILTER_VALUES, 'all');
 
@@ -93,12 +99,13 @@ function renderSims(sims) {
     const id = stableSimId(sim);
     if (!id) continue;
     present.add(id);
+    const history = lastDecisionHistory[id] ?? [];
     let card = cardBySimId.get(id);
     if (!card) {
-      card = createCard(sim, sendCommand, onExpandToggle);
+      card = createCard(sim, sendCommand, onExpandToggle, history);
       cardBySimId.set(id, card);
     } else {
-      updateCardLive(card, sim, sendCommand);
+      updateCardLive(card, sim, sendCommand, history);
     }
     simGrid.appendChild(card);
   }
@@ -116,6 +123,10 @@ function renderSims(sims) {
 function applySnapshot(data) {
   const sims = data?.tick_request?.world?.sims ?? [];
   const list = Array.isArray(sims) ? sims : [];
+  lastDecisionHistory =
+    data.decision_history && typeof data.decision_history === 'object'
+      ? data.decision_history
+      : {};
   statusEl.className = '';
   setAiState(data.ai_enabled ?? true);
   renderSims(list);

@@ -1,3 +1,4 @@
+import { openHistoryDialog } from './history-dialog.js';
 import { cap, simDisplayName, stableSimId } from './sim-model.js';
 
 export function buildInteractionsSection(sim) {
@@ -91,8 +92,12 @@ export function buildDetailGrid(sim) {
   return grid;
 }
 
-/** @param {(simId: string, action: string) => void} sendCommand */
-export function buildActions(sim, sendCommand) {
+/**
+ * @param {object} sim
+ * @param {(simId: string, action: string) => void} sendCommand
+ * @param {Array<object>} historyEntries
+ */
+export function buildActions(sim, sendCommand, historyEntries) {
   const wrap = document.createElement('div');
   wrap.className = 'actions';
 
@@ -104,6 +109,16 @@ export function buildActions(sim, sendCommand) {
     sendCommand(sim.sim_id_str || String(sim.sim_id), 'go_home');
   });
   wrap.appendChild(goHome);
+
+  const historyBtn = document.createElement('button');
+  historyBtn.className = 'action-btn action-btn--secondary history-btn';
+  const count = Array.isArray(historyEntries) ? historyEntries.length : 0;
+  historyBtn.textContent = count > 0 ? `History (${count})` : 'History';
+  historyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openHistoryDialog(simDisplayName(sim), historyEntries ?? []);
+  });
+  wrap.appendChild(historyBtn);
 
   return wrap;
 }
@@ -158,8 +173,13 @@ export function fillInfoFromSim(infoEl, sim, extraTagLabel) {
   }
 }
 
-/** @param {(simId: string, action: string) => void} sendCommand */
-export function updateCardLive(card, sim, sendCommand) {
+/**
+ * @param {HTMLElement} card
+ * @param {object} sim
+ * @param {(simId: string, action: string) => void} sendCommand
+ * @param {Array<object>} historyEntries
+ */
+export function updateCardLive(card, sim, sendCommand, historyEntries) {
   card._viewerLastSim = sim;
   card.dataset.present = '1';
   card.classList.remove('off-lot');
@@ -168,7 +188,7 @@ export function updateCardLive(card, sim, sendCommand) {
   expandedBody.replaceChildren(
     buildDetailGrid(sim),
     buildInteractionsSection(sim),
-    buildActions(sim, sendCommand)
+    buildActions(sim, sendCommand, historyEntries)
   );
 }
 
@@ -205,8 +225,9 @@ export function updateCardOffLot(card) {
  * @param {object} sim
  * @param {(simId: string, action: string) => void} sendCommand
  * @param {() => void} onExpandToggle reorder grid after expanded state changes
+ * @param {Array<object>} historyEntries
  */
-export function createCard(sim, sendCommand, onExpandToggle) {
+export function createCard(sim, sendCommand, onExpandToggle, historyEntries) {
   const id = stableSimId(sim);
   const card = document.createElement('div');
   card.className = 'sim-card';
@@ -229,6 +250,6 @@ export function createCard(sim, sendCommand, onExpandToggle) {
     onExpandToggle();
   });
 
-  updateCardLive(card, sim, sendCommand);
+  updateCardLive(card, sim, sendCommand, historyEntries);
   return card;
 }

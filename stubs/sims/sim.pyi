@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+from event_testing.results import EnqueueResult
 from interactions.context import InteractionContext
 from interactions.interaction_queue import InteractionQueue
 from interactions.si_state import SIState
@@ -19,4 +20,4 @@ class Sim:
         context: InteractionContext,
         *args: Any,
         **kwargs: Any,
-    ) -> bool: ...
+    ) -> EnqueueResult: ...

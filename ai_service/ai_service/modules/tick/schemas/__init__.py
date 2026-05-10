@@ -5,11 +5,11 @@ Defines strict wire protocol types for HTTP serialization/deserialization. All m
 reflect the current protocol version. Amend fields and descriptions in lockstep with PROTOCOL.md.
 """
 
-from typing import Annotated, Any, Dict, List
+from typing import Annotated, Any, Dict, List, Literal
 
 from pydantic import BaseModel, Field
 
-__all__ = ("TickRequestSchema", "TickResponseSchema")
+__all__ = ("OutcomeSchema", "TickRequestSchema", "TickResponseSchema")
 
 
 class TickInfoSchema(BaseModel):
@@ -69,6 +69,26 @@ class WorldSnapshotSchema(BaseModel):
     ]
 
 
+class OutcomeSchema(BaseModel):
+    """Outcome reported by the mod for a previously dispatched decision."""
+
+    decision_id: Annotated[
+        str,
+        Field(..., description="The id of the decision returned in the previous tick response."),
+    ]
+    status: Annotated[
+        Literal["success", "failure"],
+        Field(..., description="Whether the decision was applied successfully in the game."),
+    ]
+    reason: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Human-readable reason, populated on failure or for additional context.",
+        ),
+    ]
+
+
 class TickRequestSchema(BaseModel):
     """Payload structure for a /v1/tick POST request."""
 
@@ -79,6 +99,16 @@ class TickRequestSchema(BaseModel):
     world: Annotated[
         WorldSnapshotSchema,
         Field(..., description="World state snapshot relevant to this tick."),
+    ]
+    outcomes: Annotated[
+        List[OutcomeSchema],
+        Field(
+            default_factory=list,
+            description=(
+                "Outcomes for decisions dispatched in the previous tick response. "
+                "Empty on the first tick or when no decisions were sent."
+            ),
+        ),
     ]
 
 

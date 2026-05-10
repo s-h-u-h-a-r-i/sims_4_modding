@@ -3,7 +3,7 @@ director.py — orchestrate ticks and apply AI decisions to NPC Sims.
 """
 
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import alarms
 from clock import interval_in_real_seconds
@@ -52,6 +52,7 @@ class Director:
         self._consecutive_clean_probes: int = 0
         self._debug_unchanged_probe_streak: int = 0
         self._last_post_monotonic: Optional[float] = None
+        self._pending_outcomes: "List[Dict[str, Any]]" = []
 
     # ------------------------------------------------------------------
     # Zone lifecycle
@@ -188,10 +189,15 @@ class Director:
 
     def _build_payload(self) -> Dict[str, Any]:
         self._tick_seq += 1
-        return {
+        outcomes = self._pending_outcomes
+        self._pending_outcomes = []
+        payload: Dict[str, Any] = {
             "tick": {"id": self._tick_seq, "timestamp_utc": iso_utc_now()},
             "world": sim_state.get_world_state(),
         }
+        if outcomes:
+            payload["outcomes"] = outcomes
+        return payload
 
     def _flush_tick(self, reason: Optional[str] = None) -> None:
         if sim_state.is_game_paused():
@@ -236,7 +242,9 @@ class Director:
                         "Director",
                         f"received {len(decisions)} decision(s): {decisions}",
                     )
-                    actions.apply_decisions(decisions)
+                    outcomes = actions.apply_decisions(decisions)
+                    if outcomes:
+                        self._pending_outcomes.extend(outcomes)
                 synced = sim_state.world_activity_fingerprint_if_stable()
                 self._last_sent_fingerprint = (
                     synced or sim_state.world_activity_fingerprint()
