@@ -1,3 +1,4 @@
+[build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
@@ -14,3 +15,6 @@ dependencies = [
 
 [tool.pyright]
 extraPaths = ["../EA/core", "../EA/simulation"]
+
+[tool.hatch.build.targets.wheel]
+artifacts = ["ai_service/static/viewer.html"]

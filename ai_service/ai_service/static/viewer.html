@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NPC AI — last tick</title>
+    <style>
+      :root {
+        --bg: #0f1419;
+        --fg: #e6ecf3;
+        --muted: #8b949e;
+        --panel: #1a222c;
+        --border: #2d3743;
+        --accent: #58a6ff;
+        --warn: #d29922;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 1rem 1.25rem 2rem;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.45;
+      }
+      h1 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 0 0 0.75rem;
+      }
+      .meta {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        margin-bottom: 1rem;
+      }
+      .meta strong {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .status-error {
+        color: var(--warn);
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+      }
+      section h2 {
+        margin: 0 0 0.5rem;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      pre {
+        margin: 0;
+        font-size: 0.78rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-x: auto;
+        font-family: ui-monospace, 'Cascadia Code', monospace;
+      }
+      a {
+        color: var(--accent);
+      }
+      code {
+        font-size: 0.85em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Last bridge tick</h1>
+    <p class="meta" id="meta">
+      Poll: <strong id="pollHint"></strong>. Override with URL
+      <code>?poll_ms=1000</code> (milliseconds). Endpoint:
+      <a id="endpointLink" href="#">state.json</a>
+    </p>
+    <p class="meta" id="stamp">Waiting for first request…</p>
+    <section>
+      <h2>tick_request</h2>
+      <pre id="req">{}</pre>
+    </section>
+    <section>
+      <h2>tick_response</h2>
+      <pre id="res">{}</pre>
+    </section>
+    <script>
+      function pollMsFromQuery() {
+        const q = new URLSearchParams(window.location.search).get('poll_ms');
+        if (!q) return 5000;
+        const n = parseInt(q, 10);
+        if (!Number.isFinite(n) || n < 200) return 200;
+        return n;
+      }
+      const pollMs = pollMsFromQuery();
+      document.getElementById('pollHint').textContent = pollMs + ' ms';
+
+      const stateHref =
+        window.location.origin + window.location.pathname.replace(/\/?$/, '') + '/state.json';
+      document.getElementById('endpointLink').href = stateHref;
+
+      async function pull() {
+        const stampEl = document.getElementById('stamp');
+        const reqEl = document.getElementById('req');
+        const resEl = document.getElementById('res');
+        try {
+          const r = await fetch(stateHref, { cache: 'no-store' });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const data = await r.json();
+          const when = data.received_at_utc_iso || '(no ticks yet)';
+          stampEl.textContent = 'Seq ' + (data.seq ?? '—') + ' · Received ' + when;
+          stampEl.classList.remove('status-error');
+          reqEl.textContent = JSON.stringify(data.tick_request ?? null, null, 2);
+          resEl.textContent = JSON.stringify(data.tick_response ?? null, null, 2);
+        } catch (e) {
+          stampEl.textContent = 'Fetch failed — is the server running? ' + String(e);
+          stampEl.classList.add('status-error');
+        }
+      }
+      pull();
+      setInterval(pull, pollMs);
+    </script>
+  </body>
+</html>
