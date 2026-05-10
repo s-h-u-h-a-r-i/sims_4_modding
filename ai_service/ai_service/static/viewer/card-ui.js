@@ -1,0 +1,234 @@
+import { cap, simDisplayName, stableSimId } from './sim-model.js';
+
+export function buildInteractionsSection(sim) {
+  const wrap = document.createElement('div');
+  const run = Array.isArray(sim.interactions_running) ? sim.interactions_running : [];
+  const q = Array.isArray(sim.interactions_queue) ? sim.interactions_queue : [];
+
+  if (!run.length && !q.length) {
+    const empty = document.createElement('div');
+    empty.className = 'interaction-section';
+    empty.innerHTML =
+      '<h4>Interactions</h4><div class="detail detail--spaced">Idle — nothing running or queued</div>';
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  function pill(row) {
+    const el = document.createElement('span');
+    el.className = 'int-pill u-ellipsis u-font-mono';
+    el.textContent = row.class_name || '(unknown)';
+    el.title =
+      (row.class_name || '') + ' · id ' + (row.interaction_id_str || row.interaction_id || '');
+    if (row.interaction_id_str) el.dataset.interactionId = String(row.interaction_id_str);
+    return el;
+  }
+
+  if (run.length) {
+    const sec = document.createElement('div');
+    sec.className = 'interaction-section';
+    const h = document.createElement('h4');
+    h.textContent = 'Running (SI state)';
+    sec.appendChild(h);
+    const list = document.createElement('div');
+    list.className = 'interaction-list';
+    for (const row of run) {
+      const line = document.createElement('div');
+      line.className = 'interaction-row';
+      line.appendChild(pill(row));
+      list.appendChild(line);
+    }
+    sec.appendChild(list);
+    wrap.appendChild(sec);
+  }
+
+  if (q.length) {
+    const sec = document.createElement('div');
+    sec.className = 'interaction-section';
+    const h = document.createElement('h4');
+    h.textContent = 'Queue';
+    sec.appendChild(h);
+    const list = document.createElement('div');
+    list.className = 'interaction-list';
+    for (const row of q) {
+      const line = document.createElement('div');
+      line.className = 'interaction-row';
+      if (row.is_queue_head) {
+        const head = document.createElement('span');
+        head.className = 'int-head';
+        head.textContent = 'Head';
+        line.appendChild(head);
+      }
+      line.appendChild(pill(row));
+      list.appendChild(line);
+    }
+    sec.appendChild(list);
+    wrap.appendChild(sec);
+  }
+
+  return wrap;
+}
+
+export function buildDetailGrid(sim) {
+  const fields = [
+    ['ID', sim.sim_id],
+    ['Age', cap(sim.age)],
+    ['Gender', cap(sim.gender)],
+    ['Household', sim.household_id ?? '—'],
+    ['Zone', sim.zone_id ?? '—'],
+  ];
+  const grid = document.createElement('div');
+  grid.className = 'detail-grid';
+  for (const [k, v] of fields) {
+    const dk = document.createElement('span');
+    dk.className = 'dk';
+    dk.textContent = k;
+    const dv = document.createElement('span');
+    dv.className = 'dv';
+    dv.textContent = v ?? '—';
+    grid.append(dk, dv);
+  }
+  return grid;
+}
+
+/** @param {(simId: string, action: string) => void} sendCommand */
+export function buildActions(sim, sendCommand) {
+  const wrap = document.createElement('div');
+  wrap.className = 'actions';
+
+  const goHome = document.createElement('button');
+  goHome.className = 'action-btn';
+  goHome.textContent = 'Go Home';
+  goHome.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sendCommand(sim.sim_id_str || String(sim.sim_id), 'go_home');
+  });
+  wrap.appendChild(goHome);
+
+  return wrap;
+}
+
+export function fillInfoFromSim(infoEl, sim, extraTagLabel) {
+  const nameEl = infoEl.querySelector('.name');
+  const full = simDisplayName(sim);
+  nameEl.textContent = full;
+  nameEl.title = full;
+
+  const tags = infoEl.querySelector('.tags');
+  tags.replaceChildren();
+
+  if (extraTagLabel) {
+    const left = document.createElement('span');
+    left.className = 'tag';
+    left.style.color = 'var(--warn)';
+    left.style.borderColor = 'var(--warn)';
+    left.style.background = '#2a220a';
+    left.textContent = extraTagLabel;
+    tags.appendChild(left);
+  }
+
+  const npcTag = document.createElement('span');
+  npcTag.className = 'tag ' + (sim.is_npc ? 'npc' : 'player');
+  npcTag.textContent = sim.is_npc ? 'NPC' : 'Player';
+  tags.appendChild(npcTag);
+
+  if (sim.age) {
+    const ageTag = document.createElement('span');
+    ageTag.className = 'tag age';
+    ageTag.textContent = cap(sim.age);
+    tags.appendChild(ageTag);
+  }
+  if (sim.gender) {
+    const gTag = document.createElement('span');
+    gTag.className = 'tag gender';
+    gTag.textContent = cap(sim.gender);
+    tags.appendChild(gTag);
+  }
+
+  let hhEl = infoEl.querySelector('.detail.hh');
+  if (sim.household_id != null) {
+    if (!hhEl) {
+      hhEl = document.createElement('div');
+      hhEl.className = 'detail hh u-ellipsis';
+      infoEl.appendChild(hhEl);
+    }
+    hhEl.textContent = 'HH ' + sim.household_id;
+  } else if (hhEl) {
+    hhEl.remove();
+  }
+}
+
+/** @param {(simId: string, action: string) => void} sendCommand */
+export function updateCardLive(card, sim, sendCommand) {
+  card._viewerLastSim = sim;
+  card.dataset.present = '1';
+  card.classList.remove('off-lot');
+  fillInfoFromSim(card.querySelector('.info'), sim, null);
+  const expandedBody = card.querySelector('.expanded-body');
+  expandedBody.replaceChildren(
+    buildDetailGrid(sim),
+    buildInteractionsSection(sim),
+    buildActions(sim, sendCommand)
+  );
+}
+
+export function updateCardOffLot(card) {
+  card.dataset.present = '0';
+  card.classList.add('off-lot');
+  const sim = card._viewerLastSim;
+  const info = card.querySelector('.info');
+  if (sim) {
+    fillInfoFromSim(info, sim, 'Left lot');
+  } else {
+    const nameEl = info.querySelector('.name');
+    nameEl.textContent = '(unknown sim)';
+    nameEl.title = '';
+    info.querySelector('.tags').replaceChildren();
+    const hhEl = info.querySelector('.detail.hh');
+    if (hhEl) hhEl.remove();
+  }
+  const expandedBody = card.querySelector('.expanded-body');
+  const banner = document.createElement('div');
+  banner.className = 'off-lot-banner';
+  banner.textContent = 'Not instanced on this lot';
+  expandedBody.replaceChildren(banner);
+  if (sim) {
+    const note = document.createElement('div');
+    note.className = 'detail';
+    note.style.marginBottom = '0.35rem';
+    note.textContent = 'Last snapshot (stale):';
+    expandedBody.append(note, buildDetailGrid(sim), buildInteractionsSection(sim));
+  }
+}
+
+/**
+ * @param {object} sim
+ * @param {(simId: string, action: string) => void} sendCommand
+ * @param {() => void} onExpandToggle reorder grid after expanded state changes
+ */
+export function createCard(sim, sendCommand, onExpandToggle) {
+  const id = stableSimId(sim);
+  const card = document.createElement('div');
+  card.className = 'sim-card';
+  card.dataset.simId = id;
+
+  const info = document.createElement('div');
+  info.className = 'info';
+  const name = document.createElement('div');
+  name.className = 'name u-ellipsis';
+  const tags = document.createElement('div');
+  tags.className = 'tags';
+  info.append(name, tags);
+
+  const expandedBody = document.createElement('div');
+  expandedBody.className = 'expanded-body';
+  card.append(info, expandedBody);
+
+  info.addEventListener('click', () => {
+    card.classList.toggle('expanded');
+    onExpandToggle();
+  });
+
+  updateCardLive(card, sim, sendCommand);
+  return card;
+}
