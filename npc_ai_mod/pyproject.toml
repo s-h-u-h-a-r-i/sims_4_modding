@@ -1,12 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "npc_ai_mod"
 version = "0.1.0"
-description = "Add your description here"
+description = "Sims 4 NPC AI mod — hooks the game engine and dispatches world state to a local AI service"
 readme = "README.md"
 requires-python = ">=3.7,<3.8"
 dependencies = []
 
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/npc_ai_mod"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [tool.pyright]
 pythonVersion = "3.7"
-extraPaths = ["../stubs"]
+extraPaths = ["../stubs", "src"]
 reportMissingModuleSource = "none"
+include = ["src", "scripts"]

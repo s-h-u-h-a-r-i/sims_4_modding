@@ -35,7 +35,7 @@ _MAX_IDLE_POST_REAL_SECONDS = 5.0
 
 
 # Minimum real time between HTTP ticks (debounce/max_wait still schedule, but POST waits).
-# Stops POST ↔ immediate “dirty” ↔ POST tight loops when paired reads disagree with last_sent.
+# Stops POST ↔ immediate "dirty" ↔ POST tight loops when paired reads disagree with last_sent.
 _MIN_POST_INTERVAL_REAL_S = 1.25
 
 

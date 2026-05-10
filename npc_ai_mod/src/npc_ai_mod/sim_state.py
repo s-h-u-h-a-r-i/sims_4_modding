@@ -162,7 +162,7 @@ def _si_fingerprint_slices(sim: Any) -> tuple:
 
 def world_activity_fingerprint() -> tuple:
     """
-    Cheap hashable snapshot of “is the world visibly different since last tick”.
+    Cheap hashable snapshot of "is the world visibly different since last tick".
 
     Per Sim: instanced id, running/queued **affordance-class multisets** (not SI ids).
     Used to coalesce bridge traffic — SI ids churn between reads even when gameplay is steady.
