@@ -15,4 +15,4 @@ dependencies = []
 pythonVersion = "3.7"
 extraPaths = ["../stubs"]
 reportMissingModuleSource = "none"
-include = ["scripts"]
+include = ["npc_ai_mod", "scripts"]
