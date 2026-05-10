@@ -5,8 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from ai_service.deps import ViewerHubWsDep
-from ai_service.modules.tick.services import TickStore
+from ai_service.deps import TickStoreDep, TickStoreWsDep, ViewerHubWsDep
 
 __all__ = ("router",)
 
@@ -16,10 +15,11 @@ router = APIRouter(prefix="/viewer")
 
 
 @router.websocket("/ws")
-async def viewer_ws(websocket: WebSocket, hub: ViewerHubWsDep) -> None:
+async def viewer_ws(
+    websocket: WebSocket, store: TickStoreWsDep, hub: ViewerHubWsDep
+) -> None:
     await hub.register(websocket)
     try:
-        store = TickStore()
         await websocket.send_json(asdict(store.get_snapshot()))
         while True:
             try:
@@ -51,7 +51,6 @@ def viewer_page() -> HTMLResponse:
 
 
 @router.get("/state.json", response_class=JSONResponse)
-def viewer_state_json() -> JSONResponse:
-    store = TickStore()
+def viewer_state_json(store: TickStoreDep) -> JSONResponse:
     snapshot = asdict(store.get_snapshot())
     return JSONResponse(content=snapshot)
