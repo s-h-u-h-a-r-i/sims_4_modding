@@ -58,7 +58,8 @@ function cmpHousehold(ha, hb) {
   if (ha == null && hb == null) return 0;
   if (ha == null) return 1;
   if (hb == null) return -1;
-  console.log(ha, hb);
+  const na = Number(ha);
+  const nb = Number(hb);
   if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
   return String(ha).localeCompare(String(hb), undefined, { numeric: true });
 }
