@@ -8,9 +8,17 @@ as plain dicts suitable for JSON serialisation and sending to the AI service.
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import services
+from clock import ClockSpeedMode
 
 if TYPE_CHECKING:
     from sims.sim_info import SimInfo
+
+
+def is_game_paused() -> bool:
+    try:
+        return services.game_clock_service().clock_speed == ClockSpeedMode.PAUSED
+    except Exception:
+        return False
 
 
 def get_instanced_sim_infos() -> "List[SimInfo]":
@@ -31,16 +39,14 @@ def get_instanced_sim_infos() -> "List[SimInfo]":
 def serialize_sim(sim_info: "SimInfo") -> "Dict[str, Any]":
     """Convert a SimInfo into a JSON-serialisable dict."""
     return {
-        "sim_id": int(getattr(sim_info, "id", 0)),
-        "first_name": str(getattr(sim_info, "first_name", "")),
-        "last_name": str(getattr(sim_info, "last_name", "")),
-        "age": getattr(getattr(sim_info, "age", None), "name", None),
-        "gender": getattr(getattr(sim_info, "gender", None), "name", None),
-        "is_npc": bool(getattr(sim_info, "is_npc", False)),
+        "sim_id": int(sim_info.id),
+        "first_name": str(sim_info.first_name),
+        "last_name": str(sim_info.last_name),
+        "age": sim_info.age.name if sim_info.age is not None else None,
+        "gender": sim_info.gender.name if sim_info.gender is not None else None,
+        "is_npc": bool(sim_info.is_npc),
         "household_id": (
-            int(getattr(sim_info, "household_id", 0))
-            if getattr(sim_info, "household_id", None) is not None
-            else None
+            int(sim_info.household_id) if sim_info.household_id is not None else None
         ),
     }
 

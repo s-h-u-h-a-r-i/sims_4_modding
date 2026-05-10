@@ -1,0 +1,6 @@
+from typing import Iterator, ValuesView
+from sims.sim_info import SimInfo
+
+class SimInfoManager:
+    def values(self) -> ValuesView[SimInfo]: ...
+    def __iter__(self) -> Iterator[int]: ...

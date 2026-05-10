@@ -32,7 +32,9 @@ class Director:
         }
 
     def push_tick_if_due(self) -> None:
-        """Send a tick to the AI service if the wall-clock throttle allows."""
+        """Send a tick to the AI service if the wall-clock throttle allows and game is not paused."""
+        if sim_state.is_game_paused():
+            return
         if not tick_throttle.allow_send():
             return
         try:

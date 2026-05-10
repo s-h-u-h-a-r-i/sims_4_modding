@@ -8,4 +8,5 @@ dependencies = []
 
 [tool.pyright]
 pythonVersion = "3.7"
-extraPaths = ["../EA/core", "../EA/simulation"]
+extraPaths = ["../stubs"]
+reportMissingModuleSource = "none"
