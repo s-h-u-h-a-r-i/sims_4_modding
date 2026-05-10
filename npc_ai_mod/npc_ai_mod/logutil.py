@@ -8,6 +8,10 @@ FILE_LOG_NAME = "npc_ai_mod.log"
 
 
 def _file_log_path() -> str:
+    # With .pyc files in the archive, zipimport sets __file__ to the full on-disk
+    # path including the archive name, e.g.:
+    #   C:\...\Mods\npc_ai_mod\npc_ai_mod.ts4script\npc_ai_mod\logutil.pyc
+    # Split on os.sep and find the .ts4script segment to locate the sibling log.
     norm = os.path.normpath(os.path.abspath(__file__))
     parts = norm.split(os.sep)
     for i, segment in enumerate(parts):

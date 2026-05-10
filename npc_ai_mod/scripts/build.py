@@ -25,6 +25,7 @@ import os
 import shutil
 import sys
 import zipfile
+from zipfile import PyZipFile
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -42,16 +43,6 @@ MODS_DIR = os.environ.get(
     os.path.expanduser("~/Documents/Electronic Arts/The Sims 4/Mods"),
 )
 
-EXCLUDE_PATTERNS = ("__pycache__", ".pyc", ".pyo", ".mypy_cache", ".log")
-
-
-def _should_exclude(path: str) -> bool:
-    for pat in EXCLUDE_PATTERNS:
-        if pat in path:
-            return True
-    return False
-
-
 def build() -> None:
     os.makedirs(DIST_DIR, exist_ok=True)
 
@@ -59,19 +50,18 @@ def build() -> None:
         print(f"[error] Source directory not found: {SRC_DIR}", file=sys.stderr)
         sys.exit(1)
 
-    with zipfile.ZipFile(ARCHIVE_PATH, "w", zipfile.ZIP_DEFLATED) as zf:
-        for dirpath, dirnames, filenames in os.walk(SRC_DIR):
-            dirnames[:] = [d for d in dirnames if not _should_exclude(d)]
-            for filename in filenames:
-                if _should_exclude(filename):
-                    continue
-                abs_path = os.path.join(dirpath, filename)
-                # arcname keeps npc_ai_mod/ at the archive root.
-                arcname = os.path.relpath(abs_path, os.path.dirname(SRC_DIR))
-                zf.write(abs_path, arcname)
+    # PyZipFile.writepy compiles .py → .pyc under the running Python version
+    # (must be 3.7 — use `uv run python scripts/build.py`) and stores them with
+    # full archive-relative paths, which makes __file__ inside the zip include
+    # the archive path so log file resolution works correctly.
+    with PyZipFile(ARCHIVE_PATH, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writepy(SRC_DIR)
 
     size_kb = os.path.getsize(ARCHIVE_PATH) / 1024
     print(f"[build] {ARCHIVE_PATH}  ({size_kb:.1f} KB)")
+    with zipfile.ZipFile(ARCHIVE_PATH) as zf:
+        for name in sorted(zf.namelist()):
+            print(f"  {name}")
 
 
 def deploy() -> None:
@@ -82,7 +72,9 @@ def deploy() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
-    dest = os.path.join(MODS_DIR, ARCHIVE_NAME)
+    dest_dir = os.path.join(MODS_DIR, "npc_ai_mod")
+    os.makedirs(dest_dir, exist_ok=True)
+    dest = os.path.join(dest_dir, ARCHIVE_NAME)
     shutil.copy2(ARCHIVE_PATH, dest)
     print(f"[deploy] Copied to {dest}")
 
