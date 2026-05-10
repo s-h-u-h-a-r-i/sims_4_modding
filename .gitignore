@@ -1,8 +1,7 @@
 # Local environment — personal paths, never commit
 .env
 
-# Decompiled EA game scripts — large, regenerate with decompile_ea.sh
-EA/
+# exclude EA/ locally via .git/info/exclude
 
 # Compiled mod output
 *.ts4script
