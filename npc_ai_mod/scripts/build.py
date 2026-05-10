@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-build.py — package src/npc_ai_mod/ into a deployable .ts4script archive.
+build.py — package npc_ai_mod/ into a deployable .ts4script archive.
 
 A .ts4script file is a ZIP archive that the Sims 4 engine loads directly from
 the Mods folder.  The package directory must sit at the root of the archive so
@@ -31,7 +31,7 @@ import zipfile
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC_DIR = os.path.join(PROJECT_ROOT, "src", "npc_ai_mod")
+SRC_DIR = os.path.join(PROJECT_ROOT, "npc_ai_mod")
 DIST_DIR = os.path.join(PROJECT_ROOT, "dist")
 ARCHIVE_NAME = "npc_ai_mod.ts4script"
 ARCHIVE_PATH = os.path.join(DIST_DIR, ARCHIVE_NAME)
@@ -77,7 +77,10 @@ def build() -> None:
 def deploy() -> None:
     if not os.path.isdir(MODS_DIR):
         print(f"[error] Mods directory not found: {MODS_DIR}", file=sys.stderr)
-        print("        Set SIMS4_MODS_DIR or edit MODS_DIR in scripts/build.py", file=sys.stderr)
+        print(
+            "        Set SIMS4_MODS_DIR or edit MODS_DIR in scripts/build.py",
+            file=sys.stderr,
+        )
         sys.exit(1)
     dest = os.path.join(MODS_DIR, ARCHIVE_NAME)
     shutil.copy2(ARCHIVE_PATH, dest)
@@ -85,7 +88,9 @@ def deploy() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build (and optionally deploy) npc_ai_mod.")
+    parser = argparse.ArgumentParser(
+        description="Build (and optionally deploy) npc_ai_mod."
+    )
     parser.add_argument(
         "--deploy",
         action="store_true",
