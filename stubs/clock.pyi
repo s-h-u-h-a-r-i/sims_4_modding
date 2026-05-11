@@ -1,5 +1,4 @@
 import enum
-
 from date_and_time import TimeSpan
 
 class ClockSpeedMode(enum.IntEnum):
