@@ -18,39 +18,15 @@ class ViewerBroadcastHub:
         self._loop = loop
         self._queue = asyncio.Queue(maxsize=256)
 
-    def publish_snapshot_threadsafe(self, snapshot: dict[str, Any]) -> None:
+    @staticmethod
+    def format_ws_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
+        return {**snapshot, "type": "snapshot"}
+
+    def _enqueue_threadsafe(self, payload: dict[str, Any]) -> None:
         loop = self._loop
         queue = self._queue
         if loop is None or queue is None:
             return
-
-        def _try_put() -> None:
-            try:
-                queue.put_nowait(snapshot)
-            except asyncio.QueueFull:
-                try:
-                    queue.get_nowait()
-                except asyncio.QueueEmpty:
-                    pass
-                try:
-                    queue.put_nowait(snapshot)
-                except asyncio.QueueFull:
-                    pass
-
-        try:
-            loop.call_soon_threadsafe(_try_put)
-        except RuntimeError:
-            pass
-
-    def publish_mod_logs_threadsafe(self, entries: list[dict[str, Any]]) -> None:
-        if not entries:
-            return
-        loop = self._loop
-        queue = self._queue
-        if loop is None or queue is None:
-            return
-
-        payload = {"type": "mod_logs", "entries": entries}
 
         def _try_put() -> None:
             try:
@@ -69,6 +45,17 @@ class ViewerBroadcastHub:
             loop.call_soon_threadsafe(_try_put)
         except RuntimeError:
             pass
+
+    def publish_snapshot_threadsafe(self, snapshot: dict[str, Any]) -> None:
+        self._enqueue_threadsafe(self.format_ws_snapshot(snapshot))
+
+    def publish_mod_logs_threadsafe(self, entries: list[dict[str, Any]]) -> None:
+        if not entries:
+            return
+        self._enqueue_threadsafe({"type": "mod_logs", "entries": entries})
+
+    def publish_tick_frame_threadsafe(self, tick: dict[str, Any], world: dict[str, Any]) -> None:
+        self._enqueue_threadsafe({"type": "tick_frame", "tick": tick, "world": world})
 
     async def run_broadcast_consumer(self) -> None:
         assert self._queue is not None

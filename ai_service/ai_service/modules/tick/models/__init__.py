@@ -24,9 +24,6 @@ class DecisionRecord:
 @dataclass(frozen=True, kw_only=True)
 class TickSnapshot:
     seq: int
-    ticks_seen: int | None
     received_at_utc_iso: str | None
-    tick_request: Dict[str, Any] | None
-    tick_response: Dict[str, Any] | None
     ai_enabled: bool = True
     decision_history: Dict[str, Any] = field(default_factory=dict)

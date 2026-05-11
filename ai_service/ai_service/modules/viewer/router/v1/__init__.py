@@ -21,7 +21,7 @@ async def viewer_ws(
 ) -> None:
     await hub.register(websocket)
     try:
-        await websocket.send_json(asdict(store.get_snapshot()))
+        await websocket.send_json(hub.format_ws_snapshot(asdict(store.get_snapshot())))
         while True:
             try:
                 raw = await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
@@ -34,7 +34,7 @@ async def viewer_ws(
                 elif msg_type == "set_ai_enabled":
                     store.set_ai_enabled(bool(msg.get("enabled", True)))
                     # Immediately reflect change in all connected viewers
-                    await hub.broadcast_json(asdict(store.get_snapshot()))
+                    await hub.broadcast_json(hub.format_ws_snapshot(asdict(store.get_snapshot())))
 
             except asyncio.TimeoutError:
                 continue

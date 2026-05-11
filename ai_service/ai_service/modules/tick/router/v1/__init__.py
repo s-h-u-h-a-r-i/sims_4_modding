@@ -21,9 +21,11 @@ async def post_tick(
     decisions = store.pop_commands()
     response = TickResponseSchema(protocol_version="1.0", decisions=decisions)
     log_payload = [e.model_dump() for e in body.logs]
-    request_dump = body.model_dump()
-    request_dump.pop("logs", None)
-    store.record_tick(request_dump, response.model_dump())
+    store.note_tick_received()
+    hub.publish_tick_frame_threadsafe(
+        body.tick.model_dump(),
+        body.world.model_dump(),
+    )
     hub.publish_snapshot_threadsafe(asdict(store.get_snapshot()))
     if log_payload:
         hub.publish_mod_logs_threadsafe(log_payload)

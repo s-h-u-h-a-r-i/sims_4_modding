@@ -23,12 +23,14 @@ const simGrid = document.getElementById('simGrid');
 const aiToggle = document.getElementById('aiToggle');
 const aiLabel = document.getElementById('aiLabel');
 
+const LS_LAST_FRAME_KEY = 'npc_ai_viewer_last_tick_frame_v1';
+
 let ws = null;
 let aiEnabled = true;
 /** @type {Map<string, HTMLElement>} */
 const cardBySimId = new Map();
 
-/** Snapshot `tick_request.world.sims` from last frame (expand/collapse reordering). */
+/** Last known `world.sims` from tick_frame (expand/collapse reordering). */
 let lastGridSims = [];
 
 /**
@@ -60,6 +62,30 @@ function wsSend(msg) {
 
 function sendCommand(simId, action) {
   wsSend({ type: 'command', action, sim_id: simId });
+}
+
+function loadStoredFrame() {
+  try {
+    const raw = localStorage.getItem(LS_LAST_FRAME_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (o?.world?.sims && Array.isArray(o.world.sims)) {
+      lastGridSims = o.world.sims;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function applyTickFrame(data) {
+  const world = data?.world;
+  if (!world || !Array.isArray(world.sims)) return;
+  try {
+    localStorage.setItem(LS_LAST_FRAME_KEY, JSON.stringify({ tick: data.tick, world }));
+  } catch (e) {
+    /* ignore */
+  }
+  renderSims(world.sims);
 }
 
 /**
@@ -122,20 +148,19 @@ function renderSims(sims) {
 }
 
 function applySnapshot(data) {
-  const sims = data?.tick_request?.world?.sims ?? [];
-  const list = Array.isArray(sims) ? sims : [];
   lastDecisionHistory =
     data.decision_history && typeof data.decision_history === 'object'
       ? data.decision_history
       : {};
   statusEl.className = '';
   setAiState(data.ai_enabled ?? true);
-  renderSims(list);
+  renderSims(lastGridSims);
 
   let notHere = 0;
   for (const card of cardBySimId.values()) {
     if (card.dataset.present === '0') notHere++;
   }
+  const list = Array.isArray(lastGridSims) ? lastGridSims : [];
   const onLot = list.length;
   const seq = 'Seq ' + (data.seq ?? '—');
   if (onLot && notHere) {
@@ -164,8 +189,14 @@ function connect() {
   ws.onmessage = (ev) => {
     try {
       const data = JSON.parse(ev.data);
+      if (data && data.type === 'tick_frame') {
+        applyTickFrame(data);
+        return;
+      }
       if (routeViewerMessage(data)) return;
-      applySnapshot(data);
+      if (data && data.type === 'snapshot') {
+        applySnapshot(data);
+      }
     } catch (e) {
       statusEl.textContent = String(e);
       statusEl.className = 'error';
@@ -209,4 +240,6 @@ function initViewerControls() {
 
 initViewerControls();
 initModLogPanel();
+loadStoredFrame();
+renderSims(lastGridSims);
 connect();
