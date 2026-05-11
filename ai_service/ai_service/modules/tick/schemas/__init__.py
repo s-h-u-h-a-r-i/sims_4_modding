@@ -41,7 +41,7 @@ class DecisionItemSchema(BaseModel):
         str,
         Field(
             ...,
-            description='Registered action in the mod (e.g. "go_home").',
+            description='Registered action in the mod (e.g. "go_home", "summon_sim").',
         ),
     ]
 

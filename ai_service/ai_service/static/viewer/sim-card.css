@@ -1,6 +1,5 @@
 /* Caps labels — shared type treatment */
 .tag,
-.off-lot-banner,
 .interaction-section h4,
 .int-head,
 .action-btn {
@@ -38,15 +37,62 @@
 }
 
 .sim-card.off-lot:hover {
-  border-color: var(--muted);
-  box-shadow: none;
+  border-color: var(--plumbob);
+  box-shadow: var(--shadow-card-hover);
 }
 
-.off-lot-banner {
-  font-size: 0.72rem;
+/* Off-lot: header-only; never show expanded panel */
+.sim-card.off-lot .expanded-body {
+  display: none !important;
+}
+
+.sim-card.off-lot .info {
+  position: relative;
+}
+
+.off-lot-hint {
+  font-size: 0.65rem;
+  font-weight: 800;
   letter-spacing: 0.06em;
-  color: var(--warn);
-  padding: 0 0 0.35rem;
+  text-transform: uppercase;
+  color: var(--plumbob-deep);
+  line-height: 1.25;
+}
+
+.off-lot-hint::before {
+  content: '\25C6\00A0';
+  font-size: 0.55rem;
+  opacity: 0.85;
+  vertical-align: 0.05em;
+}
+
+.sim-card.summon-loading {
+  pointer-events: none;
+  opacity: 0.92;
+}
+
+.sim-card.summon-loading .info {
+  padding-right: 2.6rem;
+}
+
+.sim-card.summon-loading .info::after {
+  content: '';
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  right: 1rem;
+  top: 50%;
+  margin-top: -0.5rem;
+  border: 2px solid var(--plumbob-tint);
+  border-top-color: var(--plumbob-deep);
+  border-radius: 50%;
+  animation: sims-summon-spin 0.7s linear infinite;
+}
+
+@keyframes sims-summon-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .sim-card .info {

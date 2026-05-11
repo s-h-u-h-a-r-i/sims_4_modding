@@ -35,7 +35,7 @@ back a list of decisions the AI wants applied (e.g. send a Sim home).
                          ▼
                     director.py
                  actions.apply_decisions()
-                    go_home, ...
+                    go_home, summon_sim, ...
 ```
 
 ---
@@ -162,6 +162,7 @@ relative imports, e.g. `from .schemas import TickPayload`.
 | `registry.py` | **`ACTION_HANDLERS`** — maps wire `action` string to `ActionHandler` |
 | `sim_lookup.py` | **`find_sim_info`** via **`sim_info_manager`** |
 | `handlers/go_home.py` | **`go_home`** affordance push (template for new handlers) |
+| `handlers/summon_sim.py` | **`summon_sim`** — venue `summon_npcs` for off-lot Sims |
 
 Add a handler: implement **`apply_<name>(sim_info)`** in **`handlers/`**, import it in **`registry`**, and register the wire name.
 
@@ -264,6 +265,7 @@ Supported actions:
 | Action | Effect |
 |---|---|
 | `go_home` | Pushes `SIM_SKEWER_AFFORDANCES[0]` (go-home interaction) at `Priority.High` |
+| `summon_sim` | Off-lot Sim: `active_venue.summon_npcs` with purpose DEFAULT (NPC + active Sim as host) or `BRING_PLAYER_SIM_TO_LOT` (played Sim) |
 
 ---
 

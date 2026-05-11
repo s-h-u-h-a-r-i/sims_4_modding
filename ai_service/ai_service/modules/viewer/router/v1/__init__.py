@@ -30,6 +30,9 @@ async def viewer_ws(
 
                 if msg_type == "command":
                     store.push_command(msg)
+                    await hub.broadcast_json(
+                        hub.format_ws_snapshot(asdict(store.get_snapshot()))
+                    )
 
                 elif msg_type == "set_ai_enabled":
                     store.set_ai_enabled(bool(msg.get("enabled", True)))

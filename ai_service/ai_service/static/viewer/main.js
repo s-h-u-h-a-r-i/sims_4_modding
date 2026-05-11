@@ -6,6 +6,11 @@ import {
 } from './mod-logs.js';
 import { FILTER_VALUES, loadPref, LS_FILTER, LS_SORT, SORT_VALUES } from './prefs.js';
 import {
+  beginSummonFlow,
+  cancelSummonTracking,
+  reconcileSummonFromHistory,
+} from './summon-track.js';
+import {
   buildTickOrder,
   filterPasses,
   resolveSimOnRoster,
@@ -64,6 +69,11 @@ function sendCommand(simId, action) {
   wsSend({ type: 'command', action, sim_id: simId });
 }
 
+function offLotHeaderTap(s, card) {
+  beginSummonFlow(stableSimId(s), card, s);
+  sendCommand(s.sim_id_str || String(s.sim_id), 'summon_sim');
+}
+
 /** Same behaviour as tapping a card header: toggle expanded + reorder grid + scroll peer into view. */
 function expandPeerFromSocial(peerIdWire) {
   const raw = peerIdWire == null ? '' : String(peerIdWire).trim();
@@ -116,6 +126,7 @@ function clearStaleBridgeSessionUi() {
   cardBySimId.clear();
   clearStoredModLogsForNewBridgeSession();
   storedFrameBridgeSessionId = viewerBridgeSessionId;
+  cancelSummonTracking();
 }
 
 /** Returns true when the UI was cleared here (caller may defer status text updates). */
@@ -195,7 +206,15 @@ function renderSims(sims) {
     const history = lastDecisionHistory[id] ?? [];
     let card = cardBySimId.get(id);
     if (!card) {
-      card = createCard(sim, sendCommand, onExpandToggle, history, sims, expandPeerFromSocial);
+      card = createCard(
+        sim,
+        sendCommand,
+        onExpandToggle,
+        history,
+        sims,
+        expandPeerFromSocial,
+        offLotHeaderTap,
+      );
       cardBySimId.set(id, card);
     } else {
       updateCardLive(card, sim, sendCommand, history, sims, expandPeerFromSocial);
@@ -205,7 +224,7 @@ function renderSims(sims) {
 
   for (const [id, card] of cardBySimId) {
     if (!present.has(id)) {
-      updateCardOffLot(card, lastGridSims, expandPeerFromSocial);
+      updateCardOffLot(card);
       simGrid.appendChild(card);
     }
   }
@@ -218,6 +237,7 @@ function applySnapshot(data) {
 
   lastDecisionHistory =
     data.decision_history && typeof data.decision_history === 'object' ? data.decision_history : {};
+  reconcileSummonFromHistory(lastDecisionHistory);
   statusEl.className = '';
   setAiState(data.ai_enabled ?? true);
   renderSims(lastGridSims);

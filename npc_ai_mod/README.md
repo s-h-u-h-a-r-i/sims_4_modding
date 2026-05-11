@@ -15,7 +15,7 @@ in real time.
    debounce timer arms. After 0.35 s of quiet the mod POSTs the full world
    snapshot to the AI service at `http://127.0.0.1:8765/v1/tick`.
 4. The AI service responds with a list of decisions; the mod applies each one
-   (currently supports `go_home`).
+   (currently supports `go_home`, `summon_sim`).
 
 See [docs/architecture.md](docs/architecture.md) for a detailed module breakdown
 and data-flow diagrams.

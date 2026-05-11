@@ -148,11 +148,12 @@ One request carries the current world snapshot; the response carries all decisio
 
 The `ai_service` viewer queues WebSocket commands as dictionaries that may include extra keys (e.g. `type: "command"`); the mod only reads `id`, `sim_id`, and `action`.
 
-**Supported actions** (extend in `npc_ai_mod/actions.py` and document here):
+**Supported actions** (register in `npc_ai_mod/npc_ai_mod/actions/registry.py` and document here):
 
 | `action` | Behaviour |
 |----------|-----------|
 | `go_home` | Push go-home affordance (`SIM_SKEWER_AFFORDANCES[0]`) at high priority. |
+| `summon_sim` | Off-lot Sim: `active_venue.summon_npcs` with `NPCSummoningPurpose.DEFAULT` (NPC + host) or `BRING_PLAYER_SIM_TO_LOT` (played Sim). No-op if already instanced. |
 
 Unknown `action` values produce a **failure** outcome with reason `unknown action ...`; the server may still record that in viewer history.
 

@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Type
 
+from interactions.base.interaction import Interaction
 from sims.sim_info_types import Age, Gender
 if TYPE_CHECKING:
     from sims.sim import Sim
@@ -105,7 +106,7 @@ class SimInfo:
     degree_tracker: object
 
     # ── Class-level tuning constants ─────────────────────────────────────────
-    SIM_SKEWER_AFFORDANCES: Tuple[Type[Any], ...]
+    SIM_SKEWER_AFFORDANCES: Tuple[Type[Interaction], ...]
     DEFAULT_AWAY_ACTION: Dict[Type[Any], Any]  # keys are motive commodity classes
 
     # ── Methods ───────────────────────────────────────────────────────────────

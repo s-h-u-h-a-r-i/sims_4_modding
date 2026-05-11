@@ -1,0 +1,105 @@
+/* Toast notifications — panel + plumbob diamond */
+
+.sims-toast-stack {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.sims-toast {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.6rem 0.75rem;
+  padding: 0.85rem 0.65rem 0.85rem 0.85rem;
+  background: var(--panel);
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 8px 28px var(--shadow-deep), 0 0 0 1px var(--plumbob-glow);
+  font-family: var(--font-viewer);
+  color: var(--fg);
+  opacity: 0;
+  transform: translateY(0.5rem) scale(0.98);
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
+}
+
+.sims-toast--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.sims-toast--success {
+  border-color: var(--plumbob-deep);
+  box-shadow: 0 8px 24px var(--shadow-deep), 0 0 0 2px var(--plumbob-glow);
+}
+
+.sims-toast--error {
+  border-color: #b85c5c;
+  box-shadow: 0 8px 24px var(--shadow-deep), 0 0 0 2px rgba(196, 74, 74, 0.22);
+}
+
+.sims-toast--info {
+  border-color: var(--muted);
+}
+
+/* Small plumbob diamond */
+.sims-toast-plumbob {
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 12px solid var(--plumbob);
+  margin-top: 0.2rem;
+  filter: drop-shadow(0 1px 0 var(--plumbob-deep));
+}
+
+.sims-toast--error .sims-toast-plumbob {
+  border-bottom-color: var(--red);
+  filter: drop-shadow(0 1px 0 #8f3030);
+}
+
+.sims-toast-text {
+  min-width: 0;
+}
+
+.sims-toast-title {
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.25;
+}
+
+.sims-toast-body {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.sims-toast-close {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  cursor: pointer;
+  border-radius: var(--radius-widget);
+  font-family: inherit;
+}
+
+.sims-toast-close:hover {
+  color: var(--fg);
+  background: var(--plumbob-tint);
+}

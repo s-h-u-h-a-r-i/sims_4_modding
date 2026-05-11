@@ -9,7 +9,7 @@ function initialsFromPeer(peer) {
   if (!fn && !ln) return '?';
   const u = fn.charAt(0).toUpperCase();
   const v = ln ? ln.charAt(0).toUpperCase() : fn.length > 1 ? fn.charAt(1).toUpperCase() : '';
-  return (u + v) || '?';
+  return u + v || '?';
 }
 
 /**
@@ -33,11 +33,7 @@ export function buildSocialPartnersSection(sim, allSims, onActivatePeerCard) {
   const resolved = [];
   for (const rawId of ids) {
     const idStr =
-      typeof rawId === 'string'
-        ? rawId.trim()
-        : rawId != null
-          ? String(rawId).trim()
-          : '';
+      typeof rawId === 'string' ? rawId.trim() : rawId != null ? String(rawId).trim() : '';
     if (!idStr) continue;
     resolved.push({
       idStr,
@@ -306,11 +302,24 @@ export function fillInfoFromSim(infoEl, sim, extraTagLabel) {
  * @param {object[]|undefined} allSims
  * @param {(wirePeerId: string) => void} [onActivatePeerCard]
  */
-export function updateCardLive(card, sim, sendCommand, historyEntries, allSims, onActivatePeerCard) {
+export function updateCardLive(
+  card,
+  sim,
+  sendCommand,
+  historyEntries,
+  allSims,
+  onActivatePeerCard
+) {
   card._viewerLastSim = sim;
   card.dataset.present = '1';
   card.classList.remove('off-lot');
-  fillInfoFromSim(card.querySelector('.info'), sim, null);
+  const info = card.querySelector('.info');
+  info.title = '';
+  const hintEl = info.querySelector('.off-lot-hint');
+  if (hintEl) hintEl.remove();
+  fillInfoFromSim(info, sim, null);
+  info.removeAttribute('role');
+  info.removeAttribute('aria-label');
   const expandedBody = card.querySelector('.expanded-body');
 
   /** @type {HTMLElement[]} */
@@ -321,37 +330,44 @@ export function updateCardLive(card, sim, sendCommand, historyEntries, allSims, 
   expandedBody.replaceChildren(...parts);
 }
 
-export function updateCardOffLot(card, allSims, onActivatePeerCard) {
+/**
+ * Off-lot cards stay collapsed: header click fires summon_sim only (no expand).
+ *
+ * @param {HTMLElement} card
+ */
+export function updateCardOffLot(card) {
   card.dataset.present = '0';
   card.classList.add('off-lot');
+  card.classList.remove('expanded');
   const sim = card._viewerLastSim;
   const info = card.querySelector('.info');
   if (sim) {
     fillInfoFromSim(info, sim, 'Left lot');
+    info.title = '';
+    const full = simDisplayName(sim);
+    info.setAttribute('role', 'button');
+    info.setAttribute('aria-label', full ? `Summon ${full} to this lot` : 'Summon sim to this lot');
+    let hint = info.querySelector('.off-lot-hint');
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.className = 'off-lot-hint';
+      info.appendChild(hint);
+    }
+    hint.textContent = 'Tap to summon sim to this lot';
   } else {
     const nameEl = info.querySelector('.name');
     nameEl.textContent = '(unknown sim)';
     nameEl.title = '';
+    info.title = '';
+    info.removeAttribute('role');
+    info.removeAttribute('aria-label');
     info.querySelector('.tags').replaceChildren();
     const hhEl = info.querySelector('.detail.hh');
     if (hhEl) hhEl.remove();
+    const hintGone = info.querySelector('.off-lot-hint');
+    if (hintGone) hintGone.remove();
   }
-  const expandedBody = card.querySelector('.expanded-body');
-  const banner = document.createElement('div');
-  banner.className = 'off-lot-banner';
-  banner.textContent = 'Not instanced on this lot';
-  expandedBody.replaceChildren(banner);
-  if (sim) {
-    const note = document.createElement('div');
-    note.className = 'detail';
-    note.style.marginBottom = '0.35rem';
-    note.textContent = 'Last snapshot (stale):';
-    const social = buildSocialPartnersSection(sim, allSims, onActivatePeerCard);
-    const parts = [note, buildDetailGrid(sim)];
-    if (social) parts.push(social);
-    parts.push(buildInteractionsSection(sim));
-    expandedBody.append(...parts);
-  }
+  card.querySelector('.expanded-body').replaceChildren();
 }
 
 /**
@@ -361,8 +377,17 @@ export function updateCardOffLot(card, allSims, onActivatePeerCard) {
  * @param {Array<object>} historyEntries
  * @param {object[]|undefined} allSims
  * @param {(wirePeerId: string) => void} [onActivatePeerCard]
+ * @param {(sim: object, card: HTMLElement) => void} [onOffLotHeaderTap]
  */
-export function createCard(sim, sendCommand, onExpandToggle, historyEntries, allSims, onActivatePeerCard) {
+export function createCard(
+  sim,
+  sendCommand,
+  onExpandToggle,
+  historyEntries,
+  allSims,
+  onActivatePeerCard,
+  onOffLotHeaderTap
+) {
   const id = stableSimId(sim);
   const card = document.createElement('div');
   card.className = 'sim-card';
@@ -381,6 +406,13 @@ export function createCard(sim, sendCommand, onExpandToggle, historyEntries, all
   card.append(info, expandedBody);
 
   info.addEventListener('click', () => {
+    if (card.dataset.present === '0') {
+      const s = card._viewerLastSim;
+      if (s && typeof onOffLotHeaderTap === 'function') {
+        onOffLotHeaderTap(s, card);
+      }
+      return;
+    }
     card.classList.toggle('expanded');
     onExpandToggle();
   });
