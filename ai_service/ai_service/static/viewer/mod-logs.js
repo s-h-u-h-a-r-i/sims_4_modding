@@ -29,6 +29,19 @@ export function routeViewerMessage(data) {
   return false;
 }
 
+/** Wipe persisted + in-memory viewer logs after a game restart (mod bridge_session_id rollover). */
+export function clearStoredModLogsForNewBridgeSession() {
+  entries = [];
+  userFollowingTail = true;
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch (e) {
+    /* ignore */
+  }
+  persist();
+  renderList();
+}
+
 function loadStored() {
   try {
     const raw = localStorage.getItem(LS_KEY);

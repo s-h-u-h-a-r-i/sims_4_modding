@@ -95,6 +95,16 @@ class TickInfoSchema(BaseModel):
             ),
         ),
     ]
+    bridge_session_id: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description=(
+                "Opaque id from the mod; recomputed each game/script reload. "
+                "When it changes the server resets viewer/tick-store state tied to prior sessions."
+            ),
+        ),
+    ]
 
 
 class WorldSnapshotSchema(BaseModel):

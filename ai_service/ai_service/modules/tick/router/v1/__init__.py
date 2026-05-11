@@ -16,6 +16,7 @@ async def post_tick(
     store: TickStoreDep,
     hub: ViewerHubDep,
 ) -> TickResponseSchema:
+    store.ensure_bridge_session(body.tick.bridge_session_id)
     if body.outcomes:
         store.record_outcomes([o.model_dump() for o in body.outcomes])
     decisions = store.pop_commands()

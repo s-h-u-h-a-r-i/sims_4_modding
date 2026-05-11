@@ -46,7 +46,8 @@ One request carries the current world snapshot; the response carries all decisio
 {
   "tick": {
     "id": 0,
-    "timestamp_utc": "2026-05-09T17:00:00Z"
+    "timestamp_utc": "2026-05-09T17:00:00Z",
+    "bridge_session_id": "550e8400-e29b-41d4-a716-446655440000"
   },
   "world": {
     "lot_id": null,
@@ -62,6 +63,7 @@ One request carries the current world snapshot; the response carries all decisio
 |-------|------|-------------|
 | `tick.id` | integer | Monotonic tick counter from the mod (starts at 1 on first POST in a zone session). |
 | `tick.timestamp_utc` | string (ISO 8601) | When the snapshot was taken. |
+| `tick.bridge_session_id` | string (UUID) | New value each game/script reload; `ai_service` clears viewer/command history when this changes (optional field for backwards compatibility when omitted). |
 | `world` | object | Zone/lot context plus instanced Sims (`sim_state.get_world_state()`). |
 | `world.lot_id` | integer \| null | Active lot id when available. |
 | `world.zone_id` | integer \| null | Current zone id when available. |
@@ -193,4 +195,4 @@ The in-game client is simpler with **`POST /v1/tick` only**; implement these onl
 | Version | Change |
 |---------|--------|
 | 1.0 (draft) | Initial `POST /v1/tick` contract. |
-| 1.0 | Documented real request fields (`outcomes`, `logs`), full `SerializedSim` shape, and flat `decisions` (`id` / `sim_id` / `action`) aligned with `npc_ai_mod` and `ai_service`. |
+| 1.0 | Documented real request fields (`outcomes`, `logs`), full `SerializedSim` shape, flat `decisions` (`id` / `sim_id` / `action`), and **`tick.bridge_session_id`** so hosted/viewer state can reset when Sims 4 reloads the mod scripts. |

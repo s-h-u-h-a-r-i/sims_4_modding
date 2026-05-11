@@ -57,6 +57,7 @@ class WorldState:
 class TickInfo:
     id: int
     timestamp_utc: str
+    bridge_session_id: str
 
 
 @dataclass

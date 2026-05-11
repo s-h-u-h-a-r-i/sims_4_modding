@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import time
 import typing
+import uuid
 from dataclasses import replace
 
 import alarms
@@ -47,6 +48,7 @@ _MIN_POST_INTERVAL_REAL_S = 1.25
 
 class Director:
     def __init__(self) -> None:
+        self._bridge_session_id: typing.Final[str] = str(uuid.uuid4())
         self._tick_seq: int = 0
         self._probe_alarm = _ManagedAlarm()
         self._debounce_alarm = _ManagedAlarm()
@@ -197,7 +199,11 @@ class Director:
         outcomes = self._pending_outcomes
         self._pending_outcomes = []
         return TickPayload(
-            tick=TickInfo(id=self._tick_seq, timestamp_utc=iso_utc_now()),
+            tick=TickInfo(
+                id=self._tick_seq,
+                timestamp_utc=iso_utc_now(),
+                bridge_session_id=self._bridge_session_id,
+            ),
             world=sim_state.get_world_state(),
             outcomes=outcomes,
         )

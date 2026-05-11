@@ -27,3 +27,4 @@ class TickSnapshot:
     received_at_utc_iso: str | None
     ai_enabled: bool = True
     decision_history: Dict[str, Any] = field(default_factory=dict)
+    bridge_session_id: str | None = None

@@ -1,5 +1,9 @@
 import { createCard, updateCardLive, updateCardOffLot } from './card-ui.js';
-import { initModLogPanel, routeViewerMessage } from './mod-logs.js';
+import {
+  clearStoredModLogsForNewBridgeSession,
+  initModLogPanel,
+  routeViewerMessage,
+} from './mod-logs.js';
 import { FILTER_VALUES, loadPref, LS_FILTER, LS_SORT, SORT_VALUES } from './prefs.js';
 import {
   buildTickOrder,
@@ -15,6 +19,11 @@ const aiToggle = document.getElementById('aiToggle');
 const aiLabel = document.getElementById('aiLabel');
 
 const LS_LAST_FRAME_KEY = 'npc_ai_viewer_last_tick_frame_v1';
+
+/** Last bridge_session_id from the server; null until first snapshot/tick_frame. */
+let viewerBridgeSessionId = null;
+/** From localStorage tick frame; used to detect stale grid after game restart. */
+let storedFrameBridgeSessionId = null;
 
 let ws = null;
 let aiEnabled = true;
@@ -70,10 +79,21 @@ function expandPeerFromSocial(peerIdWire) {
 }
 
 function loadStoredFrame() {
+  storedFrameBridgeSessionId = null;
   try {
     const raw = localStorage.getItem(LS_LAST_FRAME_KEY);
     if (!raw) return;
     const o = JSON.parse(raw);
+    const sid = o?.tick?.bridge_session_id;
+    if (!sid) {
+      try {
+        localStorage.removeItem(LS_LAST_FRAME_KEY);
+      } catch (e2) {
+        /* ignore */
+      }
+      return;
+    }
+    storedFrameBridgeSessionId = String(sid);
     if (o?.world?.sims && Array.isArray(o.world.sims)) {
       lastGridSims = o.world.sims;
     }
@@ -82,7 +102,49 @@ function loadStoredFrame() {
   }
 }
 
+function clearStaleBridgeSessionUi() {
+  lastGridSims = [];
+  lastDecisionHistory = {};
+  try {
+    localStorage.removeItem(LS_LAST_FRAME_KEY);
+  } catch (e) {
+    /* ignore */
+  }
+  for (const card of cardBySimId.values()) {
+    card.remove();
+  }
+  cardBySimId.clear();
+  clearStoredModLogsForNewBridgeSession();
+  storedFrameBridgeSessionId = viewerBridgeSessionId;
+}
+
+/** Returns true when the UI was cleared here (caller may defer status text updates). */
+function noteServerBridgeSession(serverSidRaw) {
+  const serverSid = serverSidRaw == null ? '' : String(serverSidRaw).trim();
+  if (!serverSid) {
+    return false;
+  }
+
+  const rotating =
+    viewerBridgeSessionId !== null && viewerBridgeSessionId !== serverSid;
+  const lsStaleWhenHandshake =
+    viewerBridgeSessionId === null &&
+    storedFrameBridgeSessionId !== null &&
+    storedFrameBridgeSessionId !== serverSid;
+
+  viewerBridgeSessionId = serverSid;
+  storedFrameBridgeSessionId = serverSid;
+
+  if (rotating || lsStaleWhenHandshake) {
+    clearStaleBridgeSessionUi();
+    return true;
+  }
+  return false;
+}
+
 function applyTickFrame(data) {
+  const rotated = noteServerBridgeSession(data?.tick?.bridge_session_id);
+
   const world = data?.world;
   if (!world || !Array.isArray(world.sims)) return;
   try {
@@ -152,6 +214,8 @@ function renderSims(sims) {
 }
 
 function applySnapshot(data) {
+  const rotated = noteServerBridgeSession(data.bridge_session_id);
+
   lastDecisionHistory =
     data.decision_history && typeof data.decision_history === 'object' ? data.decision_history : {};
   statusEl.className = '';
@@ -173,6 +237,9 @@ function applySnapshot(data) {
     statusEl.textContent = seq + ' · no one on lot · ' + notHere + ' not here';
   } else {
     statusEl.textContent = seq + ' · no sims on lot';
+  }
+  if (rotated && onLot === 0 && !notHere) {
+    statusEl.textContent = seq + ' · new bridge session · waiting for sims…';
   }
 }
 

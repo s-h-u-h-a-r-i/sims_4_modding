@@ -17,6 +17,7 @@ class TickStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._tick_count = 0
+        self._bridge_session_id: str | None = None
         self._last_received_at_utc_iso: str | None = None
         self._ai_enabled: bool = True
         self._command_queue: deque[Dict[str, Any]] = deque(maxlen=50)
@@ -54,6 +55,20 @@ class TickStore:
                     pass
             self._record_by_id[record.id] = record
 
+    def ensure_bridge_session(self, session_id: str | None) -> None:
+        """Drop cross-session queues/history when the game mod reloads (new bridge session id)."""
+        if not session_id:
+            return
+        with self._lock:
+            if session_id == self._bridge_session_id:
+                return
+            self._bridge_session_id = session_id
+            self._tick_count = 0
+            self._last_received_at_utc_iso = None
+            self._command_queue.clear()
+            self._decision_history.clear()
+            self._record_by_id.clear()
+
     def pop_commands(self) -> List[Dict[str, Any]]:
         now_iso = datetime.now(timezone.utc).isoformat()
         with self._lock:
@@ -89,6 +104,7 @@ class TickStore:
                 received_at_utc_iso=self._last_received_at_utc_iso,
                 ai_enabled=self._ai_enabled,
                 decision_history=history,
+                bridge_session_id=self._bridge_session_id,
             )
 
     def _serialise_history(self) -> Dict[str, Any]:
