@@ -80,8 +80,8 @@ python scripts/build.py --profile development
 # Build and copy to your Mods folder
 python scripts/build.py --deploy
 
-# Override the default Mods path
-SIMS4_MODS_DIR="/path/to/Mods" python scripts/build.py --deploy
+# Override the default Mods path (after setting MODS_DIR in npc_ai_mod/.env or the environment)
+MODS_DIR="/path/to/Mods" python scripts/build.py --deploy
 ```
 
 Each build copies `config/profiles/<profile>.py` to **`config/generated.py`**

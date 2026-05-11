@@ -291,7 +291,6 @@ python scripts/build.py --profile development  # baked verbose SI dumps
 python scripts/build.py --deploy
 ```
 
-From repo root (parent of `npc_ai_mod/`): **`python build.py --profile …`** does the same
-and writes **`npc_ai_mod.ts4script`** next to **`build.py`**.
+From the **`npc_ai_mod/`** package directory, the same commands use `scripts/build.py` and write **`dist/npc_ai_mod.ts4script`**.
 
-Set `SIMS4_MODS_DIR` or `MODS_DIR` (depending on script) per each script’s README.
+Set `MODS_DIR` in `npc_ai_mod/.env` (or the environment) for `--deploy`.

@@ -28,11 +28,11 @@ any AI backend you like as long as it speaks the bridge protocol.
 
 ```bash
 git clone https://github.com/your-username/npc_ai_mod
-cd npc_ai_mod
-cp .env.example .env
+cd npc_ai_mod                       # repository root: this folder contains npc_ai_mod/ and ai_service/
+cp npc_ai_mod/.env.example npc_ai_mod/.env
 ```
 
-Open `.env` and fill in your paths:
+Edit `npc_ai_mod/.env` and fill in your paths:
 
 - `MODS_DIR` — absolute path to your Sims 4 `Mods` folder
 - `GAME_DIR` — absolute path to the Sims 4 `Data/Simulation/Gameplay` folder
@@ -71,14 +71,13 @@ is gitignored.
 **Linux/macOS / Windows:**
 
 ```bash
-python build.py                    # production profile (default)
-python build.py --profile development   # verbose SI dumps, larger logs per tick
+cd npc_ai_mod
+uv run python scripts/build.py                      # production profile (default)
+uv run python scripts/build.py --profile development
+uv run python scripts/build.py --deploy            # also copy to MODS_DIR
 ```
 
-This bakes `npc_ai_mod/npc_ai_mod/config/generated.py` from
-`config/profiles/<profile>.py`, compiles `npc_ai_mod/` into `npc_ai_mod.ts4script`,
-and copy it to your `MODS_DIR`. If `MODS_DIR` is not set they compile only and
-skip the copy.
+This bakes `npc_ai_mod/config/generated.py` from `config/profiles/<profile>.py` and writes `npc_ai_mod/dist/npc_ai_mod.ts4script`. `MODS_DIR` comes from the environment, from `npc_ai_mod/.env`, or defaults to the usual Electronic Arts Mods path; override it if yours differs.
 
 ### 5. Run the AI bridge (development)
 
@@ -87,7 +86,7 @@ Python 3.10+ recommended for the FastAPI process (separate from Python 3.7 used 
 ```bash
 cd ai_service
 uv sync
-uv run uvicorn ai_service.__main__:app --host 127.0.0.1 --port 8765
+uv run python -m ai_service.__main__
 ```
 
 See [`ai_service/README.md`](ai_service/README.md).
@@ -108,8 +107,8 @@ ai_service/
   main.py / models.py / router_v1.py / game_types.py — FastAPI + EA type hints (see ai_service/README.md)
 build.sh         — Linux/macOS build script
 build.py         — cross-platform build script
-decompile_ea.sh  — extract + decompile EA scripts for IDE support
-.env.example     — environment variable template
+decompile_ea.sh  — extract + decompile EA scripts for IDE support (reads GAME_DIR from npc_ai_mod/.env)
+npc_ai_mod/.env.example — MODS_DIR + GAME_DIR template for build + decompile
 ai_service/pyproject.toml — FastAPI service (use `uv` in `ai_service/`)
 pyrightconfig.json — Pyright: repo root `.` + `EA/` on extraPaths; Python 3.7 vs 3.10 per subtree
 .vscode/settings.json — Pylance `python.analysis.extraPaths` when opening the folder

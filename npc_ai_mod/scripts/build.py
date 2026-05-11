@@ -13,7 +13,7 @@ Usage
 Options
 -------
 --deploy    Copy the built archive to the Sims 4 Mods folder after packaging.
-            Set the SIMS4_MODS_DIR environment variable or edit MODS_DIR below.
+            Set MODS_DIR or use npc_ai_mod/.env (see npc_ai_mod/.env.example).
 
 Output
 ------
@@ -51,6 +51,27 @@ PROFILE_DIR = os.path.join(CONFIG_PKG, "profiles")
 GENERATED_CONFIG = os.path.join(CONFIG_PKG, "generated.py")
 
 
+def _load_dotenv(path: str) -> None:
+    """Minimal KEY=value loader; does not override existing environment variables."""
+    if not os.path.isfile(path):
+        return
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+            key, _, raw = line.partition("=")
+            key = key.strip()
+            val = raw.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = val
+
+
+_load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+
+
 def materialize_build_config(profile: str) -> None:
     """Copy profiles/<profile>.py → config/generated.py."""
     src = os.path.join(PROFILE_DIR, f"{profile}.py")
@@ -61,9 +82,9 @@ def materialize_build_config(profile: str) -> None:
     rel = os.path.relpath(GENERATED_CONFIG, PROJECT_ROOT)
     print(f"[build] config profile {profile!r} → {rel}")
 
-# Override via env var or edit this path for your machine.
+# Override via MODS_DIR, npc_ai_mod/.env, or edit this default for your machine.
 MODS_DIR = os.environ.get(
-    "SIMS4_MODS_DIR",
+    "MODS_DIR",
     os.path.expanduser("~/Documents/Electronic Arts/The Sims 4/Mods"),
 )
 
@@ -91,7 +112,7 @@ def deploy() -> None:
     if not os.path.isdir(MODS_DIR):
         print(f"[error] Mods directory not found: {MODS_DIR}", file=sys.stderr)
         print(
-            "        Set SIMS4_MODS_DIR or edit MODS_DIR in scripts/build.py",
+            "        Set MODS_DIR, add it to npc_ai_mod/.env, or edit MODS_DIR in scripts/build.py",
             file=sys.stderr,
         )
         sys.exit(1)

@@ -8,15 +8,17 @@
 # Output: EA/core/  EA/simulation/
 # Run once after setup; re-run after game patches.
 #
-# Reads GAME_DIR from .env (copy .env.example → .env and fill it in).
+# Reads GAME_DIR from npc_ai_mod/.env (copy npc_ai_mod/.env.example → npc_ai_mod/.env).
 
 set -uo pipefail
 
-# ── Load .env ────────────────────────────────────────────────────────────────
-if [[ -f .env ]]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── Load npc_ai_mod/.env ─────────────────────────────────────────────────────
+if [[ -f "${SCRIPT_DIR}/npc_ai_mod/.env" ]]; then
   set -a
   # shellcheck disable=SC1091
-  source .env
+  source "${SCRIPT_DIR}/npc_ai_mod/.env"
   set +a
 fi
 
@@ -33,7 +35,7 @@ fi
 
 if [[ -z "${GAME_DIR}" ]]; then
   echo "ERROR: GAME_DIR not set."
-  echo "Copy .env.example to .env and set GAME_DIR to your Sims 4 Gameplay folder."
+  echo "Copy npc_ai_mod/.env.example to npc_ai_mod/.env and set GAME_DIR."
   exit 1
 fi
 

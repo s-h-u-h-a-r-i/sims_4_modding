@@ -10,10 +10,9 @@ Install dependencies (run from this `ai_service/` directory):
 uv sync
 ```
 
-Generate `EA/` (shared with IDE support for both `npc_ai_mod` and this package; run from the **repository root**):
+Generate `EA/` (shared with IDE support for both `npc_ai_mod` and this package; run from the **repository root**). Set `GAME_DIR` in **`npc_ai_mod/.env`** (copy from `npc_ai_mod/.env.example`), then:
 
 ```bash
-cp .env.example .env   # set GAME_DIR
 ./decompile_ea.sh
 ```
 
@@ -23,8 +22,12 @@ From this directory:
 
 ```bash
 uv sync
-uv run uvicorn ai_service.__main__:app --host 127.0.0.1 --port 8765
+uv run python -m ai_service.__main__
 ```
+
+Configuration uses **Pydantic Settings**: env vars ``NPC_AI_BRIDGE_*`` and optional ``ai_service/.env`` (see [``.env.example``](.env.example)). Defaults disable WebSocket auto-ping so the game's persistent tick client does not hit *keepalive ping timeout* (1011). Do not start with plain ``uvicorn`` unless you pass the same ping settings.
+
+Uvicorn's CLI cannot set ping interval to ``None``; use this module or ``uvicorn.run(...)`` with the same fields as ``ai_service.settings.BridgeSettings``.
 
 Smoke check:
 
