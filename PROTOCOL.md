@@ -64,14 +64,14 @@ One request carries the current world snapshot; the response carries all decisio
 | `tick.id` | integer | Monotonic tick counter from the mod (starts at 1 on first POST in a zone session). |
 | `tick.timestamp_utc` | string (ISO 8601) | When the snapshot was taken. |
 | `tick.bridge_session_id` | string (UUID) | New value each game/script reload; `ai_service` clears viewer/command history when this changes (optional field for backwards compatibility when omitted). |
-| `world` | object | Zone/lot context plus instanced Sims (`sim_state.get_world_state()`). |
+| `world` | object | Zone/lot context plus instanced Sims (`npc_ai_mod.sim_state.get_world_state()`). |
 | `world.lot_id` | integer \| null | Active lot id when available. |
 | `world.zone_id` | integer \| null | Current zone id when available. |
 | `world.sims` | array | One object per **instanced** Sim in the zone (see below). |
 | `outcomes` | array | Optional. Outcomes for decisions **dispatched in the previous** tick response (see below). On the wire the mod **omits** this key when there are none (first tick, or no prior decisions). |
 | `logs` | array | Optional. Buffered mod log lines for the viewer (`logutil`); levels `debug`, `info`, `error`. Omitted when nothing is drained. **Max entries per drain** depends on baked mod profile (`npc_ai_mod/npc_ai_mod/config/profiles/` → `generated.py`, e.g. production 250 vs development thousands when SI dumps are enabled). |
 
-**Per-sim entry** (`SerializedSim` / `sim_state.serialize_sim`):
+**Per-sim entry** (`SerializedSim` / `sim_state.serialize_sim` in the `sim_state` package):
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -130,7 +130,7 @@ One request carries the current world snapshot; the response carries all decisio
 | `protocol_version` | string | Optional; server capability hint (`ai_service` sends `1.0`). |
 | `decisions` | array | Flat commands for `actions.apply_decisions()` (see below). |
 
-**Decision item** — flat object (matches `ServerDecision` / `schemas._server_decision_from_wire`):
+**Decision item** — flat object (matches `ServerDecision`; parsed by `schemas.parse_tick_response`):
 
 ```json
 {

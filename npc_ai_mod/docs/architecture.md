@@ -15,13 +15,13 @@ back a list of decisions the AI wants applied (e.g. send a Sim home).
 │  Zone.on_teardown           (monkey-patched)        │
 │        │                          │                 │
 │        ▼                          ▼                 │
-│   hooks.py ──────────────► director.py              │
+│   hooks/ ─────────────────► director.py (lazy import in callbacks)
 │                              │                      │
 │               probe alarm ───┘ (every 0.75 s)       │
 │               debounce alarm (0.35 s quiet)         │
 │                              │                      │
 │                              ▼                      │
-│                         bridge.py                   │
+│                         bridge/ (client)            │
 │                    POST /v1/tick (HTTP)              │
 └────────────────────────┬────────────────────────────┘
                          │  JSON payload
@@ -34,7 +34,7 @@ back a list of decisions the AI wants applied (e.g. send a Sim home).
                          │  {"decisions": [...]}
                          ▼
                     director.py
-                 apply_decisions()
+                 actions.apply_decisions()
                     go_home, ...
 ```
 
@@ -42,13 +42,18 @@ back a list of decisions the AI wants applied (e.g. send a Sim home).
 
 ## Module Responsibilities
 
-### `hooks.py`
-Monkey-patches two game-engine methods at import time:
+### `hooks/` (package)
+
+`zone_hooks.py` monkey-patches two game-engine methods at import time:
 
 | Patched method | Trigger |
 |---|---|
 | `VenueService.on_loading_screen_animation_finished` | Zone finished loading |
 | `Zone.on_teardown` | Zone is being unloaded |
+
+Callbacks import `director` **lazily** (inside the replacement functions) so
+importing the mod package does not eagerly load the orchestration stack; only
+first zone load / teardown pulls in `director`.
 
 Both delegate to `director.on_zone_loaded()` / `director.on_zone_unloaded()`.
 No game-state reads happen here — all logic lives in `Director`.
@@ -56,6 +61,10 @@ No game-state reads happen here — all logic lives in `Director`.
 ### `director.py`
 The central orchestrator.  A single `Director` singleton is created at module
 load and lives for the lifetime of the game session.
+
+**Support module** — `director_support.py` holds `ManagedAlarm` (real-time probe /
+debounce scheduling) and `fingerprint_diff()` (human-readable deltas for debug logs,
+including `"partner wire edges changed"`).
 
 **Probe loop** — a repeating real-time alarm fires every `_PROBE_REAL_SECONDS`
 (0.75 s) and calls `world_activity_fingerprint_if_stable()`.  The fingerprint is
@@ -85,10 +94,12 @@ that viewer commands queued server-side are delivered promptly.
 **Rate limiting** — a 1.25 s minimum interval between consecutive POSTs
 prevents tight POST → dirty → POST loops.
 
-### `bridge.py`
-Thin HTTP client.  Opens a new `http.client.HTTPConnection` per call (the Sims
-4 engine does not support async I/O and the call is short-lived).  Returns the
-parsed JSON dict on HTTP 200, `None` on any error.
+### `bridge/` (package)
+
+| Module | Role |
+|--------|------|
+| `constants.py` | `HOST`, `PORT`, `PATH`, `TIMEOUT_SEC` |
+| `client.py` | `post_tick` — opens `http.client.HTTPConnection` per call (Sims 4 has no async I/O); returns parsed **`TickResponse`** on HTTP 200, **`None`** on error |
 
 | Constant | Value |
 |---|---|
@@ -109,9 +120,22 @@ Runtime constants are chosen at **package time**:
 
 `director` reads **`MOD_LOG_DRAIN_PER_TICK`**; **`sim_state`** reads **`VERBOSE_…`** and **`LOG_STAGING_MAX`**.
 
-### `sim_state.py`
-Reads game state and converts it to plain Python dicts safe for JSON
-serialisation.
+### `sim_state/` (package)
+
+Reads game state and converts it to structured snapshots (`schemas.models`) safe
+for JSON serialisation (via `schemas.wire`). Import the stable API from
+`npc_ai_mod.sim_state` — implementation is split across submodules:
+
+| Area | Module (typical) | Notes |
+|------|------------------|--------|
+| Instanced Sims | `instanced.py` | `get_instanced_sim_infos()` |
+| Per-Sim snapshot | `snapshot.py` | `serialize_sim()`, `get_world_state()` |
+| Running/queued SI rows | `serialized_interactions.py` | maps EA queues to schema types |
+| Partner graph | `partners.py` | SI-derived **`social_partner_sim_ids`** (before cohort merge) |
+| Shared-object cohorts | `partner_wire.py` | merges stereo/arcade-style co-presence into wire lists; **`partner_wire_fingerprint()`** is a fingerprint slice |
+| Activity fingerprint | `fingerprints.py` | **`world_activity_fingerprint()`**, **`world_activity_fingerprint_if_stable()`** — class multisets **plus** partner-wire tuples so cohort-only changes dirty probes |
+| Dev SI dumps | `verbose_si.py` | chunked **`SI_DUMP`** when profile enables **`VERBOSE_SIM_INTERACTION_DUMP`** |
+| Class noise filters | `_filters.py` | idle / passive exclusions for multiset rows only |
 
 - **`get_instanced_sim_infos()`** — returns only Sims physically present in the
   zone.
@@ -119,12 +143,32 @@ serialisation.
   queued interactions, **`social_partner_sim_ids`** from SI-derived participants
   (logged in **`SI_DUMP` prelude before** object cohort merge — prelude can show
   `[]` while wire lists still cohort-link via stereo, etc.).
-- **`get_world_state()`** — applies **`_partner_graph_instanced_wire()`** cohort merge
-  so payload **`social_partner_sim_ids`** include shared non-Sim targets.
+- **`get_world_state()`** — applies partner-wire cohort merge so payload
+  **`social_partner_sim_ids`** include shared non-Sim targets.
 - **`world_activity_fingerprint()`** — class multisets **plus partner-wire tuples**
-  so cohort-only changes dirties probes.
+  so cohort-only changes dirty probes.
 
-Director helper **`_fingerprint_diff`** prints human deltas (including `"partner wire edges changed"`).
+### `schemas/` (package)
+
+Dataclasses for tick payloads (`models.py`) and JSON conversion (`wire.py`:
+`tick_payload_to_wire`, `parse_tick_response`, …). From inside the mod package use
+relative imports, e.g. `from .schemas import TickPayload`.
+
+### `actions/` (package)
+
+| Module | Role |
+|--------|------|
+| `dispatch.py` | `apply_decisions` — walks server decisions, resolves Sims, invokes handlers |
+| `registry.py` | **`ACTION_HANDLERS`** — maps wire `action` string to `ActionHandler` |
+| `sim_lookup.py` | **`find_sim_info`** via **`sim_info_manager`** |
+| `handlers/go_home.py` | **`go_home`** affordance push (template for new handlers) |
+
+Add a handler: implement **`apply_<name>(sim_info)`** in **`handlers/`**, import it in **`registry`**, and register the wire name.
+
+### `runtime.py`
+
+Thin wrapper around **`services.game_clock_service()`** — **`is_game_paused()`** gates
+probe/debounce and POST so we do not spam the bridge while paused.
 
 ### `logutil.py`
 

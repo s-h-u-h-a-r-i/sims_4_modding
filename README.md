@@ -97,10 +97,13 @@ See [`ai_service/README.md`](ai_service/README.md).
 ```
 npc_ai_mod/
   __init__.py    — entry point, registers game hooks
-  hooks.py       — VenueService injection (fires after each save loads)
-  sim_state.py   — read and serialize NPC Sim data
-  bridge.py      — HTTP client to the external AI service
-  director.py    — apply AI decisions onto NPC Sims
+  hooks/         — VenueService / Zone monkey-patches (lazy `director` import)
+  director.py    — probe/debounce/POST orchestration
+  director_support.py — real-time alarms, fingerprint debug diff
+  bridge/        — HTTP client + constants to the external AI service
+  actions/       — apply server decisions onto Sims (registry + handlers)
+  schemas/       — tick/world dataclasses + JSON wire helpers
+  sim_state/     — world snapshots, activity fingerprints, SI partner graph
 ai_service/
   main.py / models.py / router_v1.py / game_types.py — FastAPI + EA type hints (see ai_service/README.md)
 build.sh         — Linux/macOS build script

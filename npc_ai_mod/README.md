@@ -27,10 +27,25 @@ npc_ai_mod/
 ├── npc_ai_mod/           # mod source package (deployed as .ts4script)
 │   ├── __init__.py
 │   ├── config/           # profiles/ + generated.py (see Building)
-│   ├── hooks.py          # game-engine monkey-patches
+│   ├── hooks/            # zone lifecycle monkey-patches (see hooks/zone_hooks.py)
 │   ├── director.py       # probe/debounce/tick orchestration
-│   ├── bridge.py         # HTTP client → ai_service
-│   ├── sim_state.py      # game-state readers & fingerprinting
+│   ├── director_support.py  # real-time alarms + fingerprint debug diff
+│   ├── bridge/           # HTTP client + constants → ai_service
+│   │   ├── constants.py
+│   │   └── client.py
+│   ├── actions/          # apply server decisions (handlers + registry + dispatch)
+│   │   ├── registry.py
+│   │   ├── dispatch.py
+│   │   └── handlers/
+│   ├── runtime.py        # paused-state probe (clock)
+│   ├── schemas/          # tick/world dataclasses + JSON wire helpers
+│   │   ├── models.py
+│   │   └── wire.py
+│   ├── sim_state/        # game state readers, fingerprinting, SI partner graph
+│   │   ├── snapshot.py       # get_world_state, serialize_sim
+│   │   ├── fingerprints.py   # world_activity_fingerprint*
+│   │   ├── partner_wire.py   # cohort merge + partner wire slice of fingerprint
+│   │   └── …                 # filters, iteration, partners, verbose SI dump, etc.
 │   ├── logutil.py        # in-memory debug log shipped with ticks → viewer
 │   └── utils.py          # UTC timestamp helper
 ├── scripts/

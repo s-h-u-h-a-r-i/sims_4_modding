@@ -2,15 +2,9 @@ import http.client
 import json
 import typing
 
-from .logutil import log_error
-from .schemas import TickPayload, TickResponse, parse_tick_response, tick_payload_to_wire
-
-__all__ = ("post_tick",)
-
-HOST = "127.0.0.1"
-PATH = "/v1/tick"
-PORT = 8765
-TIMEOUT_SEC = 5
+from ..logutil import log_error
+from ..schemas import TickPayload, TickResponse, parse_tick_response, tick_payload_to_wire
+from .constants import HOST, PATH, PORT, TIMEOUT_SEC
 
 
 def post_tick(
