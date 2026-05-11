@@ -143,6 +143,13 @@ string.
       }
     ]
   },
+  "outcomes": [
+    {
+      "decision_id": "b1d2e3f4-...",
+      "status": "failure",
+      "reason": "unknown action 'foo'"
+    }
+  ],
   "logs": [
     {
       "timestamp_utc": "2026-05-10T19:15:00.100000+00:00",
@@ -155,15 +162,24 @@ string.
 }
 ```
 
+Keys `outcomes` and `logs` are omitted when empty (`schemas.tick_payload_to_wire`).
+
 ## Data Flow — Decision Response
 
 ```json
 {
+  "protocol_version": "1.0",
   "decisions": [
-    {"action": "go_home", "sim_id": 111}
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "sim_id": 111,
+      "action": "go_home"
+    }
   ]
 }
 ```
+
+The `id` is assigned by `ai_service` when a command is queued; the mod echoes it as `decision_id` in the next tick’s `outcomes`.
 
 Supported actions:
 

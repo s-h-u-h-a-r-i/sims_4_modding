@@ -40,7 +40,7 @@ One request carries the current world snapshot; the response carries all decisio
 ### Request
 
 - **Headers:** `Content-Type: application/json`
-- **Body:** JSON object. Minimum shape:
+- **Body:** JSON object. Shape implemented today by `npc_ai_mod` / `ai_service`:
 
 ```json
 {
@@ -52,28 +52,63 @@ One request carries the current world snapshot; the response carries all decisio
     "lot_id": null,
     "zone_id": null,
     "sims": []
-  }
+  },
+  "outcomes": [],
+  "logs": []
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `tick.id` | integer | Monotonic tick counter from the mod (optional for v1). |
+| `tick.id` | integer | Monotonic tick counter from the mod (starts at 1 on first POST in a zone session). |
 | `tick.timestamp_utc` | string (ISO 8601) | When the snapshot was taken. |
-| `world` | object | Extensible; add fields as `sim_state.py` grows. |
-| `world.sims` | array | One entry per NPC (or all controllable actors — policy is mod-side). |
+| `world` | object | Zone/lot context plus instanced Sims (`sim_state.get_world_state()`). |
+| `world.lot_id` | integer \| null | Active lot id when available. |
+| `world.zone_id` | integer \| null | Current zone id when available. |
+| `world.sims` | array | One object per **instanced** Sim in the zone (see below). |
+| `outcomes` | array | Optional. Outcomes for decisions **dispatched in the previous** tick response (see below). On the wire the mod **omits** this key when there are none (first tick, or no prior decisions). |
+| `logs` | array | Optional. Buffered mod log lines for the viewer (`logutil`); levels `debug`, `info`, `error`. Omitted when there is nothing to drain. |
 
-**Per-sim entry (illustrative, extend freely):**
+**Per-sim entry** (`SerializedSim` / `sim_state.serialize_sim`):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sim_id` | integer | Game Sim id. |
+| `sim_id_str` | string | Same id as string (stable for JSON / JS). |
+| `first_name`, `last_name` | string | |
+| `age` | string \| null | EA age enum name, e.g. `ADULT`. |
+| `gender` | string \| null | EA gender enum name. |
+| `is_npc` | boolean | |
+| `household_id` | integer \| null | |
+| `zone_id` | integer \| null | Sim’s zone id when set. |
+| `interactions_running` | array | `{ "interaction_id", "interaction_id_str", "class_name" }` per running super interaction. |
+| `interactions_queue` | array | Same fields plus `is_queue_head` (boolean). |
+
+**Outcome item** (matches `OutcomeSchema` / `DecisionOutcome`):
 
 ```json
 {
-  "sim_id": 12345,
-  "first_name": "Jordan",
-  "last_name": "Kim",
-  "is_npc": true,
-  "notes": "mod-defined fields only; no need to mirror full EA objects"
+  "decision_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "success",
+  "reason": null
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `decision_id` | string | Must match the `id` field from the corresponding decision in the prior response. |
+| `status` | string | `success` or `failure`. |
+| `reason` | string \| null | Human-readable detail (especially on failure). |
+
+**Log item** (matches `ModLogEntrySchema` / `LogEntry`):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp_utc` | string | ISO 8601. |
+| `level` | string | `debug`, `info`, or `error`. |
+| `tag` | string | Source label. |
+| `message` | string | Log text. |
+| `traceback` | string \| null | Optional; error stack / repr. |
 
 ### Response
 
@@ -89,23 +124,34 @@ One request carries the current world snapshot; the response carries all decisio
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `protocol_version` | string | Optional; server capability hint. |
-| `decisions` | array | Actions for `director.py` to apply (see below). |
+| `protocol_version` | string | Optional; server capability hint (`ai_service` sends `1.0`). |
+| `decisions` | array | Flat commands for `actions.apply_decisions()` (see below). |
 
-**Decision item (illustrative):**
+**Decision item** — flat object (matches `ServerDecision` / `schemas._server_decision_from_wire`):
 
 ```json
 {
-  "target_sim_id": 12345,
-  "action": {
-    "type": "push_interaction",
-    "interaction_guid": "0xDEADBEEF",
-    "reason": "optional human/LLM debug string"
-  }
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "sim_id": 12345,
+  "action": "go_home"
 }
 ```
 
-`action.type` is an open set; document new types in this file as you add them. Unknown types should be ignored by the mod with a log line.
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Stable id for this decision; the mod echoes it in the next request’s `outcomes[].decision_id`. |
+| `sim_id` | integer or string | Target Sim id (`ai_service` / viewer may use string; the mod resolves it with `int(str(sim_id))`). |
+| `action` | string | Registered handler name in the mod (see table below). |
+
+The `ai_service` viewer queues WebSocket commands as dictionaries that may include extra keys (e.g. `type: "command"`); the mod only reads `id`, `sim_id`, and `action`.
+
+**Supported actions** (extend in `npc_ai_mod/actions.py` and document here):
+
+| `action` | Behaviour |
+|----------|-----------|
+| `go_home` | Push go-home affordance (`SIM_SKEWER_AFFORDANCES[0]`) at high priority. |
+
+Unknown `action` values produce a **failure** outcome with reason `unknown action ...`; the server may still record that in viewer history.
 
 ### Errors
 
@@ -146,3 +192,4 @@ The in-game client is simpler with **`POST /v1/tick` only**; implement these onl
 | Version | Change |
 |---------|--------|
 | 1.0 (draft) | Initial `POST /v1/tick` contract. |
+| 1.0 | Documented real request fields (`outcomes`, `logs`), full `SerializedSim` shape, and flat `decisions` (`id` / `sim_id` / `action`) aligned with `npc_ai_mod` and `ai_service`. |

@@ -9,7 +9,41 @@ from typing import Annotated, Any, Dict, List, Literal
 
 from pydantic import BaseModel, Field
 
-__all__ = ("ModLogEntrySchema", "OutcomeSchema", "TickRequestSchema", "TickResponseSchema")
+__all__ = (
+    "DecisionItemSchema",
+    "ModLogEntrySchema",
+    "OutcomeSchema",
+    "TickRequestSchema",
+    "TickResponseSchema",
+)
+
+
+class DecisionItemSchema(BaseModel):
+    """One AI decision returned in POST /v1/tick (flat shape consumed by npc_ai_mod)."""
+
+    id: Annotated[
+        str,
+        Field(
+            ...,
+            description=(
+                "Opaque id for this decision; the game mod sends it back as outcomes[].decision_id."
+            ),
+        ),
+    ]
+    sim_id: Annotated[
+        int | str,
+        Field(
+            ...,
+            description="Target Sim id (int from game snapshot; viewer may send string).",
+        ),
+    ]
+    action: Annotated[
+        str,
+        Field(
+            ...,
+            description='Registered action in the mod (e.g. "go_home").',
+        ),
+    ]
 
 
 class ModLogEntrySchema(BaseModel):
@@ -161,12 +195,9 @@ class TickResponseSchema(BaseModel):
         ),
     ]
     decisions: Annotated[
-        List[Dict[str, Any]],
+        List[DecisionItemSchema],
         Field(
             default_factory=list,
-            description=(
-                "List of dictionaries representing individual AI "
-                "decisions/actions in response to the tick."
-            ),
+            description="Commands to run in-game before the next tick (id, sim_id, action).",
         ),
     ]
