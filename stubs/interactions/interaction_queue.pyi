@@ -1,8 +1,9 @@
-from typing import Any, Iterator, Optional
+import typing
+from collections.abc import Iterator
 
+from interactions.base.super_interaction import SuperInteraction
 
 class InteractionQueue:
     @property
-    def running(self) -> Any: ...
-
-    def __iter__(self) -> Iterator[Any]: ...
+    def running(self) -> typing.Optional[SuperInteraction]: ...
+    def __iter__(self) -> Iterator[SuperInteraction]: ...

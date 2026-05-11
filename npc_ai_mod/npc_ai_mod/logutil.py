@@ -1,5 +1,5 @@
 import traceback
-from typing import Any, Dict, List, Optional
+import typing
 
 from .utils import iso_utc_now
 
@@ -12,7 +12,7 @@ __all__ = (
 )
 
 _MAX_BUFFER = 500
-_LOG_BUFFER: List[Dict[str, Any]] = []
+_LOG_BUFFER: typing.List[typing.Dict[str, typing.Any]] = []
 
 
 def log_debug(tag: str, detail: str) -> None:
@@ -23,8 +23,10 @@ def log_info(tag: str, detail: str) -> None:
     _enqueue("info", tag, detail)
 
 
-def log_error(tag: str, detail: str, exc: Optional[BaseException] = None) -> None:
-    tb: Optional[str] = None
+def log_error(
+    tag: str, detail: str, exc: typing.Optional[BaseException] = None
+) -> None:
+    tb: typing.Optional[str] = None
     if exc is not None:
         tb = f"{exc!r}\n{traceback.format_exc()}"
     _enqueue("error", tag, detail, tb)
@@ -36,7 +38,9 @@ def clear_session_log() -> None:
     _enqueue("info", "logutil", "Session started (game package load)")
 
 
-def drain_logs_for_tick(max_entries: int = 250) -> List[Dict[str, Any]]:
+def drain_logs_for_tick(
+    max_entries: int = 250,
+) -> typing.List[typing.Dict[str, typing.Any]]:
     """Take up to `max_entries` from the head of the pending list and remove them.
 
     Entries are bundled on the outgoing tick body; persistence is viewer-only.
@@ -51,9 +55,9 @@ def drain_logs_for_tick(max_entries: int = 250) -> List[Dict[str, Any]]:
 
 
 def _enqueue(
-    level: str, tag: str, message: str, traceback_text: Optional[str] = None
+    level: str, tag: str, message: str, traceback_text: typing.Optional[str] = None
 ) -> None:
-    entry: Dict[str, Any] = {
+    entry: typing.Dict[str, typing.Any] = {
         "timestamp_utc": iso_utc_now(),
         "level": level,
         "tag": tag,

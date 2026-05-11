@@ -1,5 +1,7 @@
-from typing import Any, Iterator
+from collections.abc import Iterator
+
+from interactions.base.super_interaction import SuperInteraction
 
 
 class SIState:
-    def sis_actor_gen(self) -> Iterator[Any]: ...
+    def sis_actor_gen(self) -> Iterator[SuperInteraction]: ...

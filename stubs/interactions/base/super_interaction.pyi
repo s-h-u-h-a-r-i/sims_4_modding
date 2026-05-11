@@ -1,0 +1,2 @@
+class SuperInteraction:
+    id: int

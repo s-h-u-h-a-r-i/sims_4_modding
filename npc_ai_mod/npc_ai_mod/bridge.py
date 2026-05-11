@@ -1,6 +1,6 @@
 import http.client
 import json
-from typing import Any, Dict, Optional
+import typing
 
 from .logutil import log_error
 
@@ -12,7 +12,9 @@ PORT = 8765
 TIMEOUT_SEC = 5
 
 
-def post_tick(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def post_tick(
+    payload: typing.Dict[str, typing.Any],
+) -> typing.Optional[typing.Dict[str, typing.Any]]:
     body = json.dumps(payload)
     conn = http.client.HTTPConnection(HOST, PORT, timeout=TIMEOUT_SEC)
     try:

@@ -7,18 +7,28 @@ Add new AI actions by:
   2. Registering it in ``_ACTION_HANDLERS``.
 """
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from __future__ import annotations
+
+import typing
+from collections.abc import Callable
 
 from .logutil import log_error, log_info
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
+    import services
+    from interactions.context import (
+        InteractionContext,
+        InteractionSource,
+        QueueInsertStrategy,
+    )
+    from interactions.priority import Priority
     from sims.sim_info import SimInfo
+
 
 __all__ = ("apply_decisions",)
 
 
-def _find_sim_info(sim_id: int) -> "Optional[SimInfo]":
-    import services
+def _find_sim_info(sim_id: int) -> typing.Optional[SimInfo]:
 
     manager = services.sim_info_manager()
     if manager is None:
@@ -26,15 +36,8 @@ def _find_sim_info(sim_id: int) -> "Optional[SimInfo]":
     return manager.get(sim_id)
 
 
-def _apply_go_home(sim_info: "SimInfo") -> "Tuple[bool, Optional[str]]":
+def _apply_go_home(sim_info: SimInfo) -> typing.Tuple[bool, typing.Optional[str]]:
     try:
-        from interactions.context import (
-            InteractionContext,
-            InteractionSource,
-            QueueInsertStrategy,
-        )
-        from interactions.priority import Priority
-
         sim = sim_info.get_sim_instance()
         if sim is None:
             msg = f"sim {sim_info.sim_id} is not instanced"
@@ -61,16 +64,18 @@ def _apply_go_home(sim_info: "SimInfo") -> "Tuple[bool, Optional[str]]":
         return False, str(exc)
 
 
-ActionHandler = Callable[["SimInfo"], Tuple[bool, Optional[str]]]
+ActionHandler = Callable[[SimInfo], typing.Tuple[bool, typing.Optional[str]]]
 
-_ACTION_HANDLERS: "Dict[str, ActionHandler]" = {
+_ACTION_HANDLERS: typing.Dict[str, ActionHandler] = {
     "go_home": _apply_go_home,
 }
 
 
-def apply_decisions(decisions: "List[Dict[str, Any]]") -> "List[Dict[str, Any]]":
+def apply_decisions(
+    decisions: typing.List[typing.Dict[str, typing.Any]],
+) -> typing.List[typing.Dict[str, typing.Any]]:
     """Apply each decision and return outcome dicts for the next tick."""
-    outcomes: "List[Dict[str, Any]]" = []
+    outcomes: typing.List[typing.Dict[str, typing.Any]] = []
     for decision in decisions:
         decision_id = decision.get("id")
         action = decision.get("action")

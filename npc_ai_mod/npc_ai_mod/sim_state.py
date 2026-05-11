@@ -5,14 +5,19 @@ Responsible for collecting the current state of NPC Sims and returning it
 as plain dicts suitable for JSON serialisation and sending to the AI service.
 """
 
+from __future__ import annotations
+
+import typing
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import services
 from clock import ClockSpeedMode
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
+    from interactions.base.super_interaction import SuperInteraction
+    from sims.sim import Sim
     from sims.sim_info import SimInfo
+
 
 def is_game_paused() -> bool:
     try:
@@ -20,7 +25,8 @@ def is_game_paused() -> bool:
     except Exception:
         return False
 
-def _serialize_super_interaction(si: Any) -> "Dict[str, Any]":
+
+def _serialize_super_interaction(si: SuperInteraction) -> typing.Dict[str, typing.Any]:
     """Minimal snapshot for the viewer (and future cancel by id)."""
     return {
         "interaction_id": int(si.id),
@@ -29,10 +35,12 @@ def _serialize_super_interaction(si: Any) -> "Dict[str, Any]":
     }
 
 
-def _interactions_for_sim(sim: Any) -> "Dict[str, Any]":
+def _interactions_for_sim(
+    sim: Sim,
+) -> typing.Dict[str, typing.List[typing.Dict[str, typing.Any]]]:
     """What the sim is running now vs what is queued (per EA interaction_commands patterns)."""
-    running: List[Dict[str, Any]] = []
-    queued: List[Dict[str, Any]] = []
+    running: typing.List[typing.Dict[str, typing.Any]] = []
+    queued: typing.List[typing.Dict[str, typing.Any]] = []
 
     try:
         for si in sim.si_state.sis_actor_gen():
@@ -57,8 +65,7 @@ def _interactions_for_sim(sim: Any) -> "Dict[str, Any]":
     }
 
 
-
-def get_instanced_sim_infos() -> "List[SimInfo]":
+def get_instanced_sim_infos() -> typing.List[SimInfo]:
     """Return SimInfo objects for all Sims currently instantiated in the zone."""
     manager = services.sim_info_manager()
     if manager is None:
@@ -73,9 +80,9 @@ def get_instanced_sim_infos() -> "List[SimInfo]":
     return result
 
 
-def serialize_sim(sim_info: "SimInfo") -> "Dict[str, Any]":
+def serialize_sim(sim_info: SimInfo) -> typing.Dict[str, typing.Any]:
     """Convert a SimInfo into a JSON-serialisable dict."""
-    out: Dict[str, Any] = {
+    out: typing.Dict[str, typing.Any] = {
         "sim_id": int(sim_info.id),
         "sim_id_str": str(sim_info.id),
         "first_name": str(sim_info.first_name),
@@ -104,17 +111,19 @@ def serialize_sim(sim_info: "SimInfo") -> "Dict[str, Any]":
 # Affordance class names/prefixes excluded from the activity fingerprint.
 # These are engine-internal cycling interactions that churn every few seconds
 # and carry no signal for AI decisions.
-_FP_EXCLUDE_EXACT: frozenset = frozenset({
-    'Emotion_Idle',
-    'stand_Passive',
-    'sit_Passive',
-    'SocialPickerSI',   # social picker ticks every ~1.5s as engine background loop
-})
-_FP_EXCLUDE_PREFIXES: tuple = (
-    'Idle_',            # idle overlay animations  (Idle_Age_Teen, etc.)
-    'idle_',            # lifestyle / mood idles   (idle_Lifestyles_*, etc.)
-    'aggregate_',       # background observers     (aggregate_SocialObservation_*, etc.)
-    'reactions_',       # reaction overlays cycle on/off while underlying action continues
+_FP_EXCLUDE_EXACT: frozenset = frozenset(
+    {
+        "Emotion_Idle",
+        "stand_Passive",
+        "sit_Passive",
+        "SocialPickerSI",  # social picker ticks every ~1.5s as engine background loop
+    }
+)
+_FP_EXCLUDE_PREFIXES: typing.Tuple[str, ...] = (
+    "Idle_",  # idle overlay animations  (Idle_Age_Teen, etc.)
+    "idle_",  # lifestyle / mood idles   (idle_Lifestyles_*, etc.)
+    "aggregate_",  # background observers     (aggregate_SocialObservation_*, etc.)
+    "reactions_",  # reaction overlays cycle on/off while underlying action continues
 )
 
 
@@ -122,14 +131,18 @@ def _fp_class_is_noise(name: str) -> bool:
     return name in _FP_EXCLUDE_EXACT or name.startswith(_FP_EXCLUDE_PREFIXES)
 
 
-def _si_fingerprint_slices(sim: Any) -> tuple:
+def _si_fingerprint_slices(
+    sim: "Sim",
+) -> typing.Tuple[
+    typing.Tuple[typing.Tuple[str, int], ...], typing.Tuple[typing.Tuple[str, int], ...]
+]:
     """
     Running vs queued **class multisets** (how many of each non-noise affordance class).
 
     Noise classes (idle overlays, passive stances, social picker engine loops) are
     excluded so the fingerprint only changes on meaningful gameplay transitions.
     """
-    run_c: Counter = Counter()
+    run_c: Counter[str] = Counter()
     try:
         for si in sim.si_state.sis_actor_gen():
             try:
@@ -142,7 +155,7 @@ def _si_fingerprint_slices(sim: Any) -> tuple:
         pass
     run_tup = tuple(sorted(run_c.items()))
 
-    q_c: Counter = Counter()
+    q_c: Counter[str] = Counter()
     try:
         q = sim.queue
         if q is not None:
@@ -160,15 +173,26 @@ def _si_fingerprint_slices(sim: Any) -> tuple:
     return (run_tup, q_tup)
 
 
-def world_activity_fingerprint() -> tuple:
+def world_activity_fingerprint() -> typing.Tuple[
+    typing.Optional[int],
+    typing.Optional[int],
+    typing.Tuple[
+        typing.Tuple[
+            int,
+            typing.Tuple[typing.Tuple[str, int], ...],
+            typing.Tuple[typing.Tuple[str, int], ...],
+        ],
+        ...,
+    ],
+]:
     """
     Cheap hashable snapshot of "is the world visibly different since last tick".
 
     Per Sim: instanced id, running/queued **affordance-class multisets** (not SI ids).
     Used to coalesce bridge traffic — SI ids churn between reads even when gameplay is steady.
     """
-    zone_id: Optional[int] = None
-    lot_id: Optional[int] = None
+    zone_id: typing.Optional[int] = None
+    lot_id: typing.Optional[int] = None
 
     try:
         raw = services.current_zone_id()
@@ -184,7 +208,13 @@ def world_activity_fingerprint() -> tuple:
     except Exception:
         pass
 
-    rows: List[tuple] = []
+    rows: typing.List[
+        typing.Tuple[
+            int,
+            typing.Tuple[typing.Tuple[str, int], ...],
+            typing.Tuple[typing.Tuple[str, int], ...],
+        ]
+    ] = []
     for sim_info in get_instanced_sim_infos():
         try:
             sid = int(sim_info.id)
@@ -201,7 +231,36 @@ def world_activity_fingerprint() -> tuple:
     return (zone_id, lot_id, tuple(rows))
 
 
-def fingerprint_diff(old: Optional[tuple], new: Optional[tuple]) -> str:
+def fingerprint_diff(
+    old: typing.Optional[
+        typing.Tuple[
+            int | None,
+            int | None,
+            typing.Tuple[
+                typing.Tuple[
+                    int,
+                    typing.Tuple[typing.Tuple[str, int], ...],
+                    typing.Tuple[typing.Tuple[str, int], ...],
+                ],
+                ...,
+            ],
+        ]
+    ],
+    new: typing.Optional[
+        typing.Tuple[
+            int | None,
+            int | None,
+            typing.Tuple[
+                typing.Tuple[
+                    int,
+                    typing.Tuple[typing.Tuple[str, int], ...],
+                    typing.Tuple[typing.Tuple[str, int], ...],
+                ],
+                ...,
+            ],
+        ]
+    ],
+) -> str:
     """
     Human-readable summary of what changed between two world_activity_fingerprint() tuples.
     Used only for debug logging — not called in the hot path.
@@ -211,9 +270,9 @@ def fingerprint_diff(old: Optional[tuple], new: Optional[tuple]) -> str:
         return "(no previous fingerprint)"
     if new is None:
         return "(new fingerprint is None)"
-    old_sims: Dict[int, tuple] = {row[0]: row for row in old[2]}
-    new_sims: Dict[int, tuple] = {row[0]: row for row in new[2]}
-    parts: List[str] = []
+    old_sims = {row[0]: row for row in old[2]}
+    new_sims = {row[0]: row for row in new[2]}
+    parts: typing.List[str] = []
     if old[:2] != new[:2]:
         parts.append(f"zone/lot {old[:2]} → {new[:2]}")
     all_ids = sorted(set(old_sims) | set(new_sims))
@@ -234,7 +293,21 @@ def fingerprint_diff(old: Optional[tuple], new: Optional[tuple]) -> str:
     return "; ".join(parts) if parts else "(no visible diff)"
 
 
-def world_activity_fingerprint_if_stable() -> Optional[tuple]:
+def world_activity_fingerprint_if_stable() -> (
+    typing.Tuple[
+        int | None,
+        int | None,
+        typing.Tuple[
+            typing.Tuple[
+                int,
+                typing.Tuple[typing.Tuple[str, int], ...],
+                typing.Tuple[typing.Tuple[str, int], ...],
+            ],
+            ...,
+        ],
+    ]
+    | None
+):
     """
     Two back-to-back fingerprints must match, or we return None.
 
@@ -248,10 +321,10 @@ def world_activity_fingerprint_if_stable() -> Optional[tuple]:
     return None
 
 
-def get_world_state() -> "Dict[str, Any]":
+def get_world_state() -> typing.Dict[str, typing.Any]:
     """Collect full world snapshot: all instanced Sims + zone/lot context."""
-    zone_id: Optional[int] = None
-    lot_id: Optional[int] = None
+    zone_id: typing.Optional[int] = None
+    lot_id: typing.Optional[int] = None
 
     try:
         raw = services.current_zone_id()
@@ -267,7 +340,7 @@ def get_world_state() -> "Dict[str, Any]":
     except Exception:
         pass
 
-    sims: List[Dict[str, Any]] = []
+    sims: typing.List[typing.Dict[str, typing.Any]] = []
     for sim_info in get_instanced_sim_infos():
         try:
             sims.append(serialize_sim(sim_info))

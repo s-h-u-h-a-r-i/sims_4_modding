@@ -2,8 +2,11 @@
 director.py — orchestrate ticks and apply AI decisions to NPC Sims.
 """
 
+from __future__ import annotations
+
 import time
-from typing import Any, Dict, List, Optional
+import typing
+from collections.abc import Callable
 
 import alarms
 from clock import interval_in_real_seconds
@@ -11,6 +14,9 @@ from clock import interval_in_real_seconds
 from . import actions, bridge, sim_state
 from .logutil import drain_logs_for_tick, log_debug, log_error, log_info
 from .utils import iso_utc_now
+
+if typing.TYPE_CHECKING:
+    from alarms import AlarmHandle
 
 __all__ = ("director",)
 
@@ -45,14 +51,40 @@ class Director:
         self._tick_seq: int = 0
         self._probe_alarm = _ManagedAlarm()
         self._debounce_alarm = _ManagedAlarm()
-        self._last_sent_fingerprint: Optional[tuple] = None
-        self._pending_fingerprint: Optional[tuple] = None
-        self._dirty_since: Optional[float] = None
+        self._last_sent_fingerprint: typing.Optional[
+            typing.Tuple[
+                int | None,
+                int | None,
+                typing.Tuple[
+                    typing.Tuple[
+                        int,
+                        typing.Tuple[typing.Tuple[str, int], ...],
+                        typing.Tuple[typing.Tuple[str, int], ...],
+                    ],
+                    ...,
+                ],
+            ]
+        ] = None
+        self._pending_fingerprint: typing.Optional[
+            typing.Tuple[
+                int | None,
+                int | None,
+                typing.Tuple[
+                    typing.Tuple[
+                        int,
+                        typing.Tuple[typing.Tuple[str, int], ...],
+                        typing.Tuple[typing.Tuple[str, int], ...],
+                    ],
+                    ...,
+                ],
+            ]
+        ] = None
+        self._dirty_since: typing.Optional[float] = None
         self._consecutive_dirty_probes: int = 0
         self._consecutive_clean_probes: int = 0
         self._debug_unchanged_probe_streak: int = 0
-        self._last_post_monotonic: Optional[float] = None
-        self._pending_outcomes: "List[Dict[str, Any]]" = []
+        self._last_post_monotonic: typing.Optional[float] = None
+        self._pending_outcomes: typing.List[typing.Dict[str, typing.Any]] = []
 
     # ------------------------------------------------------------------
     # Zone lifecycle
@@ -85,7 +117,7 @@ class Director:
     # Probe callback
     # ------------------------------------------------------------------
 
-    def _on_probe_fire(self, _handle: Any) -> None:
+    def _on_probe_fire(self, _handle: AlarmHandle) -> None:
         if sim_state.is_game_paused():
             return
         fp = sim_state.world_activity_fingerprint_if_stable()
@@ -169,7 +201,7 @@ class Director:
             )
             self._flush_tick("max_wait")
 
-    def _on_debounce_fire(self, _handle: Any) -> None:
+    def _on_debounce_fire(self, _handle: AlarmHandle) -> None:
         self._debounce_alarm.cancel()
         log_debug(
             "Director", "debounce timer fired: attempting POST after quiet period"
@@ -180,18 +212,18 @@ class Director:
     # Tick flushing
     # ------------------------------------------------------------------
 
-    def _activity_fp(self) -> tuple:
+    def _activity_fp(self):
         """Prefer paired stable reads; fall back to a single sample for zone_load / edge cases."""
         fp = sim_state.world_activity_fingerprint_if_stable()
         if fp is not None:
             return fp
         return sim_state.world_activity_fingerprint()
 
-    def _build_payload(self) -> Dict[str, Any]:
+    def _build_payload(self) -> typing.Dict[str, typing.Any]:
         self._tick_seq += 1
         outcomes = self._pending_outcomes
         self._pending_outcomes = []
-        payload: Dict[str, Any] = {
+        payload: typing.Dict[str, typing.Any] = {
             "tick": {"id": self._tick_seq, "timestamp_utc": iso_utc_now()},
             "world": sim_state.get_world_state(),
         }
@@ -199,7 +231,7 @@ class Director:
             payload["outcomes"] = outcomes
         return payload
 
-    def _flush_tick(self, reason: Optional[str] = None) -> None:
+    def _flush_tick(self, reason: typing.Optional[str] = None) -> None:
         if sim_state.is_game_paused():
             return
         now = time.monotonic()
@@ -276,13 +308,13 @@ class _ManagedAlarm:
     """Wraps a single Sims 4 real-time alarm handle with safe schedule/cancel."""
 
     def __init__(self) -> None:
-        self._handle: Optional[Any] = None
+        self._handle: typing.Optional[AlarmHandle] = None
 
     def schedule(
         self,
-        owner: Any,
+        owner: object,
         interval_s: float,
-        callback: Any,
+        callback: Callable[[AlarmHandle], None],
         *,
         repeating: bool = False,
         tag: str = "alarm",
