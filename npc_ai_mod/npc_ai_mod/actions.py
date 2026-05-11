@@ -10,20 +10,17 @@ Add new AI actions by:
 from __future__ import annotations
 
 import typing
-from collections.abc import Callable
+
+import services
+from interactions.context import (
+    InteractionContext,
+    InteractionSource,
+    QueueInsertStrategy,
+)
+from interactions.priority import Priority
+from sims.sim_info import SimInfo
 
 from .logutil import log_error, log_info
-
-if typing.TYPE_CHECKING:
-    import services
-    from interactions.context import (
-        InteractionContext,
-        InteractionSource,
-        QueueInsertStrategy,
-    )
-    from interactions.priority import Priority
-    from sims.sim_info import SimInfo
-
 
 __all__ = ("apply_decisions",)
 
@@ -64,7 +61,7 @@ def _apply_go_home(sim_info: SimInfo) -> typing.Tuple[bool, typing.Optional[str]
         return False, str(exc)
 
 
-ActionHandler = Callable[[SimInfo], typing.Tuple[bool, typing.Optional[str]]]
+ActionHandler = typing.Callable[[SimInfo], typing.Tuple[bool, typing.Optional[str]]]
 
 _ACTION_HANDLERS: typing.Dict[str, ActionHandler] = {
     "go_home": _apply_go_home,

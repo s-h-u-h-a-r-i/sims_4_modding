@@ -6,17 +6,16 @@ from __future__ import annotations
 
 import time
 import typing
-from collections.abc import Callable
 
 import alarms
+from alarms import AlarmHandle
 from clock import interval_in_real_seconds
 
 from . import actions, bridge, sim_state
 from .logutil import drain_logs_for_tick, log_debug, log_error, log_info
+from .runtime import is_game_paused
+from .sim_state import WorldFingerprint
 from .utils import iso_utc_now
-
-if typing.TYPE_CHECKING:
-    from alarms import AlarmHandle
 
 __all__ = ("director",)
 
@@ -41,6 +40,38 @@ _MAX_IDLE_POST_REAL_SECONDS = 5.0
 _MIN_POST_INTERVAL_REAL_S = 1.25
 
 
+def _fingerprint_diff(
+    old: typing.Optional[WorldFingerprint],
+    new: typing.Optional[WorldFingerprint],
+) -> str:
+    """Human-readable delta between fingerprints — Director debug logging only."""
+    if old is None:
+        return "(no previous fingerprint)"
+    if new is None:
+        return "(new fingerprint is None)"
+    old_sims = {row[0]: row for row in old[2]}
+    new_sims = {row[0]: row for row in new[2]}
+    parts: typing.List[str] = []
+    if old[:2] != new[:2]:
+        parts.append(f"zone/lot {old[:2]} → {new[:2]}")
+    all_ids = sorted(set(old_sims) | set(new_sims))
+    for sid in all_ids:
+        o = old_sims.get(sid)
+        n = new_sims.get(sid)
+        if o is None:
+            parts.append(f"sim {sid} appeared")
+        elif n is None:
+            parts.append(f"sim {sid} left")
+        else:
+            o_run, o_q = o[1], o[2]
+            n_run, n_q = n[1], n[2]
+            if o_run != n_run:
+                parts.append(f"sim {sid} running {dict(o_run)} → {dict(n_run)}")
+            if o_q != n_q:
+                parts.append(f"sim {sid} queued {dict(o_q)} → {dict(n_q)}")
+    return "; ".join(parts) if parts else "(no visible diff)"
+
+
 # ---------------------------------------------------------------------------
 # Director
 # ---------------------------------------------------------------------------
@@ -51,34 +82,8 @@ class Director:
         self._tick_seq: int = 0
         self._probe_alarm = _ManagedAlarm()
         self._debounce_alarm = _ManagedAlarm()
-        self._last_sent_fingerprint: typing.Optional[
-            typing.Tuple[
-                int | None,
-                int | None,
-                typing.Tuple[
-                    typing.Tuple[
-                        int,
-                        typing.Tuple[typing.Tuple[str, int], ...],
-                        typing.Tuple[typing.Tuple[str, int], ...],
-                    ],
-                    ...,
-                ],
-            ]
-        ] = None
-        self._pending_fingerprint: typing.Optional[
-            typing.Tuple[
-                int | None,
-                int | None,
-                typing.Tuple[
-                    typing.Tuple[
-                        int,
-                        typing.Tuple[typing.Tuple[str, int], ...],
-                        typing.Tuple[typing.Tuple[str, int], ...],
-                    ],
-                    ...,
-                ],
-            ]
-        ] = None
+        self._last_sent_fingerprint: typing.Optional[WorldFingerprint] = None
+        self._pending_fingerprint: typing.Optional[WorldFingerprint] = None
         self._dirty_since: typing.Optional[float] = None
         self._consecutive_dirty_probes: int = 0
         self._consecutive_clean_probes: int = 0
@@ -118,7 +123,7 @@ class Director:
     # ------------------------------------------------------------------
 
     def _on_probe_fire(self, _handle: AlarmHandle) -> None:
-        if sim_state.is_game_paused():
+        if is_game_paused():
             return
         fp = sim_state.world_activity_fingerprint_if_stable()
         if fp is None:
@@ -182,7 +187,7 @@ class Director:
                 self._on_debounce_fire,
                 tag="debounce",
             )
-            diff = sim_state.fingerprint_diff(self._last_sent_fingerprint, fp)
+            diff = _fingerprint_diff(self._last_sent_fingerprint, fp)
             log_debug(
                 "Director.probe",
                 "world dirty vs last tick: scheduled debounced POST "
@@ -232,7 +237,7 @@ class Director:
         return payload
 
     def _flush_tick(self, reason: typing.Optional[str] = None) -> None:
-        if sim_state.is_game_paused():
+        if is_game_paused():
             return
         now = time.monotonic()
         fp = self._activity_fp()
@@ -314,7 +319,7 @@ class _ManagedAlarm:
         self,
         owner: object,
         interval_s: float,
-        callback: Callable[[AlarmHandle], None],
+        callback: typing.Callable[[AlarmHandle], None],
         *,
         repeating: bool = False,
         tag: str = "alarm",

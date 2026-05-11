@@ -11,19 +11,18 @@ import typing
 from collections import Counter
 
 import services
-from clock import ClockSpeedMode
+from interactions.base.super_interaction import SuperInteraction
+from sims.sim import Sim
+from sims.sim_info import SimInfo
 
-if typing.TYPE_CHECKING:
-    from interactions.base.super_interaction import SuperInteraction
-    from sims.sim import Sim
-    from sims.sim_info import SimInfo
-
-
-def is_game_paused() -> bool:
-    try:
-        return services.game_clock_service().clock_speed == ClockSpeedMode.PAUSED
-    except Exception:
-        return False
+# Affordance-class multiset: sorted (class __name__, count) pairs from a sim's SI state.
+ClassMultiset = typing.Tuple[typing.Tuple[str, int], ...]
+SimFingerprintRow = typing.Tuple[int, ClassMultiset, ClassMultiset]
+WorldFingerprint = typing.Tuple[
+    typing.Optional[int],
+    typing.Optional[int],
+    typing.Tuple[SimFingerprintRow, ...],
+]
 
 
 def _serialize_super_interaction(si: SuperInteraction) -> typing.Dict[str, typing.Any]:
@@ -131,11 +130,7 @@ def _fp_class_is_noise(name: str) -> bool:
     return name in _FP_EXCLUDE_EXACT or name.startswith(_FP_EXCLUDE_PREFIXES)
 
 
-def _si_fingerprint_slices(
-    sim: "Sim",
-) -> typing.Tuple[
-    typing.Tuple[typing.Tuple[str, int], ...], typing.Tuple[typing.Tuple[str, int], ...]
-]:
+def _si_fingerprint_slices(sim: Sim) -> typing.Tuple[ClassMultiset, ClassMultiset]:
     """
     Running vs queued **class multisets** (how many of each non-noise affordance class).
 
@@ -173,18 +168,7 @@ def _si_fingerprint_slices(
     return (run_tup, q_tup)
 
 
-def world_activity_fingerprint() -> typing.Tuple[
-    typing.Optional[int],
-    typing.Optional[int],
-    typing.Tuple[
-        typing.Tuple[
-            int,
-            typing.Tuple[typing.Tuple[str, int], ...],
-            typing.Tuple[typing.Tuple[str, int], ...],
-        ],
-        ...,
-    ],
-]:
+def world_activity_fingerprint() -> WorldFingerprint:
     """
     Cheap hashable snapshot of "is the world visibly different since last tick".
 
@@ -208,13 +192,7 @@ def world_activity_fingerprint() -> typing.Tuple[
     except Exception:
         pass
 
-    rows: typing.List[
-        typing.Tuple[
-            int,
-            typing.Tuple[typing.Tuple[str, int], ...],
-            typing.Tuple[typing.Tuple[str, int], ...],
-        ]
-    ] = []
+    rows: typing.List[SimFingerprintRow] = []
     for sim_info in get_instanced_sim_infos():
         try:
             sid = int(sim_info.id)
@@ -231,83 +209,7 @@ def world_activity_fingerprint() -> typing.Tuple[
     return (zone_id, lot_id, tuple(rows))
 
 
-def fingerprint_diff(
-    old: typing.Optional[
-        typing.Tuple[
-            int | None,
-            int | None,
-            typing.Tuple[
-                typing.Tuple[
-                    int,
-                    typing.Tuple[typing.Tuple[str, int], ...],
-                    typing.Tuple[typing.Tuple[str, int], ...],
-                ],
-                ...,
-            ],
-        ]
-    ],
-    new: typing.Optional[
-        typing.Tuple[
-            int | None,
-            int | None,
-            typing.Tuple[
-                typing.Tuple[
-                    int,
-                    typing.Tuple[typing.Tuple[str, int], ...],
-                    typing.Tuple[typing.Tuple[str, int], ...],
-                ],
-                ...,
-            ],
-        ]
-    ],
-) -> str:
-    """
-    Human-readable summary of what changed between two world_activity_fingerprint() tuples.
-    Used only for debug logging — not called in the hot path.
-    Format: (zone_id, lot_id, ((sim_id, run_tup, q_tup), ...))
-    """
-    if old is None:
-        return "(no previous fingerprint)"
-    if new is None:
-        return "(new fingerprint is None)"
-    old_sims = {row[0]: row for row in old[2]}
-    new_sims = {row[0]: row for row in new[2]}
-    parts: typing.List[str] = []
-    if old[:2] != new[:2]:
-        parts.append(f"zone/lot {old[:2]} → {new[:2]}")
-    all_ids = sorted(set(old_sims) | set(new_sims))
-    for sid in all_ids:
-        o = old_sims.get(sid)
-        n = new_sims.get(sid)
-        if o is None:
-            parts.append(f"sim {sid} appeared")
-        elif n is None:
-            parts.append(f"sim {sid} left")
-        else:
-            o_run, o_q = o[1], o[2]
-            n_run, n_q = n[1], n[2]
-            if o_run != n_run:
-                parts.append(f"sim {sid} running {dict(o_run)} → {dict(n_run)}")
-            if o_q != n_q:
-                parts.append(f"sim {sid} queued {dict(o_q)} → {dict(n_q)}")
-    return "; ".join(parts) if parts else "(no visible diff)"
-
-
-def world_activity_fingerprint_if_stable() -> (
-    typing.Tuple[
-        int | None,
-        int | None,
-        typing.Tuple[
-            typing.Tuple[
-                int,
-                typing.Tuple[typing.Tuple[str, int], ...],
-                typing.Tuple[typing.Tuple[str, int], ...],
-            ],
-            ...,
-        ],
-    ]
-    | None
-):
+def world_activity_fingerprint_if_stable() -> typing.Optional[WorldFingerprint]:
     """
     Two back-to-back fingerprints must match, or we return None.
 
