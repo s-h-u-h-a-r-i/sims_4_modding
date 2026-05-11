@@ -68,20 +68,17 @@ is gitignored.
 
 ### 4. Build and deploy
 
-**Linux/macOS:**
+**Linux/macOS / Windows:**
 
 ```bash
-./build.sh
+python build.py                    # production profile (default)
+python build.py --profile development   # verbose SI dumps, larger logs per tick
 ```
 
-**Windows or any platform:**
-
-```bash
-python build.py
-```
-
-Both scripts compile `npc_ai_mod/` into `npc_ai_mod.ts4script` and copy it to
-your `MODS_DIR`. If `MODS_DIR` is not set they compile only and skip the copy.
+This bakes `npc_ai_mod/npc_ai_mod/config/generated.py` from
+`config/profiles/<profile>.py`, compiles `npc_ai_mod/` into `npc_ai_mod.ts4script`,
+and copy it to your `MODS_DIR`. If `MODS_DIR` is not set they compile only and
+skip the copy.
 
 ### 5. Run the AI bridge (development)
 

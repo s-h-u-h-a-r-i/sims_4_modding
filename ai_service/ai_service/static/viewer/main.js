@@ -1,22 +1,13 @@
-import {
-  createCard,
-  updateCardLive,
-  updateCardOffLot,
-} from './card-ui.js';
-import {
-  FILTER_VALUES,
-  LS_FILTER,
-  LS_SORT,
-  loadPref,
-  SORT_VALUES,
-} from './prefs.js';
+import { createCard, updateCardLive, updateCardOffLot } from './card-ui.js';
+import { initModLogPanel, routeViewerMessage } from './mod-logs.js';
+import { FILTER_VALUES, loadPref, LS_FILTER, LS_SORT, SORT_VALUES } from './prefs.js';
 import {
   buildTickOrder,
   filterPasses,
+  resolveSimOnRoster,
   sortCompareCards,
   stableSimId,
 } from './sim-model.js';
-import { initModLogPanel, routeViewerMessage } from './mod-logs.js';
 
 const statusEl = document.getElementById('status');
 const simGrid = document.getElementById('simGrid');
@@ -62,6 +53,20 @@ function wsSend(msg) {
 
 function sendCommand(simId, action) {
   wsSend({ type: 'command', action, sim_id: simId });
+}
+
+/** Same behaviour as tapping a card header: toggle expanded + reorder grid + scroll peer into view. */
+function expandPeerFromSocial(peerIdWire) {
+  const raw = peerIdWire == null ? '' : String(peerIdWire).trim();
+  if (!raw) return;
+  const peer = resolveSimOnRoster(raw, lastGridSims);
+  const canon = peer ? stableSimId(peer) : raw;
+  if (!canon) return;
+  const card = cardBySimId.get(canon);
+  if (!card || card.dataset.present !== '1') return;
+  card.classList.toggle('expanded');
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  reorderSimGrid(lastGridSims);
 }
 
 function loadStoredFrame() {
@@ -119,7 +124,6 @@ function renderSims(sims) {
   if (!Array.isArray(sims)) sims = [];
   lastGridSims = sims;
   const present = new Set();
-
   const onExpandToggle = () => reorderSimGrid(lastGridSims);
 
   for (const sim of sims) {
@@ -129,17 +133,17 @@ function renderSims(sims) {
     const history = lastDecisionHistory[id] ?? [];
     let card = cardBySimId.get(id);
     if (!card) {
-      card = createCard(sim, sendCommand, onExpandToggle, history);
+      card = createCard(sim, sendCommand, onExpandToggle, history, sims, expandPeerFromSocial);
       cardBySimId.set(id, card);
     } else {
-      updateCardLive(card, sim, sendCommand, history);
+      updateCardLive(card, sim, sendCommand, history, sims, expandPeerFromSocial);
     }
     simGrid.appendChild(card);
   }
 
   for (const [id, card] of cardBySimId) {
     if (!present.has(id)) {
-      updateCardOffLot(card);
+      updateCardOffLot(card, lastGridSims, expandPeerFromSocial);
       simGrid.appendChild(card);
     }
   }
@@ -149,9 +153,7 @@ function renderSims(sims) {
 
 function applySnapshot(data) {
   lastDecisionHistory =
-    data.decision_history && typeof data.decision_history === 'object'
-      ? data.decision_history
-      : {};
+    data.decision_history && typeof data.decision_history === 'object' ? data.decision_history : {};
   statusEl.className = '';
   setAiState(data.ai_enabled ?? true);
   renderSims(lastGridSims);

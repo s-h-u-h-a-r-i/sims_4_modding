@@ -25,6 +25,13 @@ class QueuedInteraction:
 
 @dataclass
 class SerializedSim:
+    """Per-Sim snapshot. ``social_partner_sim_ids``: other Sims in running/queued SI
+
+    participant state (targets + optional ``_social_group`` member lists).
+
+    Sorted unique ints excluding ``sim_id``.
+    """
+
     sim_id: int
     sim_id_str: str
     first_name: str
@@ -36,6 +43,7 @@ class SerializedSim:
     zone_id: t.Optional[int]
     interactions_running: t.List[RunningInteraction]
     interactions_queue: t.List[QueuedInteraction]
+    social_partner_sim_ids: t.List[int] = field(default_factory=list)
 
 
 @dataclass
@@ -103,9 +111,18 @@ def log_entry_to_wire(le: LogEntry) -> t.Dict[str, t.Any]:
 
 
 def tick_payload_to_wire(p: TickPayload) -> t.Dict[str, t.Any]:
+    def _serialized_sim_to_wire(sim: SerializedSim) -> t.Dict[str, t.Any]:
+        d = asdict(sim)
+        # JavaScript loses integer precision beyond 2^53-1 — keep bigint-like fields as decimals.
+        d["sim_id"] = str(sim.sim_id)
+        d["social_partner_sim_ids"] = [str(pid) for pid in sim.social_partner_sim_ids]
+        return d
+
+    world = asdict(p.world)
+    world["sims"] = [_serialized_sim_to_wire(s) for s in p.world.sims]
     body: t.Dict[str, t.Any] = {
         "tick": asdict(p.tick),
-        "world": asdict(p.world),
+        "world": world,
     }
     if p.outcomes:
         body["outcomes"] = [asdict(o) for o in p.outcomes]

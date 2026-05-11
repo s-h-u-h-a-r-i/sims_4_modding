@@ -1,5 +1,130 @@
 import { openHistoryDialog } from './history-dialog.js';
-import { cap, simDisplayName, stableSimId } from './sim-model.js';
+import { cap, resolveSimOnRoster, simDisplayName, stableSimId } from './sim-model.js';
+
+/** @param {object} peer */
+function initialsFromPeer(peer) {
+  if (!peer) return '?';
+  const fn = (peer?.first_name != null ? String(peer.first_name) : '').trim();
+  const ln = (peer?.last_name != null ? String(peer.last_name) : '').trim();
+  if (!fn && !ln) return '?';
+  const u = fn.charAt(0).toUpperCase();
+  const v = ln ? ln.charAt(0).toUpperCase() : fn.length > 1 ? fn.charAt(1).toUpperCase() : '';
+  return (u + v) || '?';
+}
+
+/**
+ * @param {object} sim
+ * @param {object[]|undefined} allSims
+ * @param {(wirePeerId: string) => void} [onActivatePeerCard] toggle that Sim's card like the header tap
+ */
+export function buildSocialPartnersSection(sim, allSims, onActivatePeerCard) {
+  const ids = Array.isArray(sim.social_partner_sim_ids) ? sim.social_partner_sim_ids : [];
+  if (!ids.length) return null;
+
+  const sec = document.createElement('div');
+  sec.className = 'interaction-section social-partners-section';
+  const h = document.createElement('h4');
+  h.textContent = 'Interacting with';
+  sec.appendChild(h);
+  const row = document.createElement('div');
+  row.className = 'social-peer-row';
+
+  /** @type {Array<{ idStr: string, peer?: object|null }>} */
+  const resolved = [];
+  for (const rawId of ids) {
+    const idStr =
+      typeof rawId === 'string'
+        ? rawId.trim()
+        : rawId != null
+          ? String(rawId).trim()
+          : '';
+    if (!idStr) continue;
+    resolved.push({
+      idStr,
+      peer: resolveSimOnRoster(idStr, allSims),
+    });
+  }
+  if (!resolved.length) return null;
+
+  resolved.forEach((entry, idx) => {
+    if (idx > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'social-peer-sep';
+      sep.setAttribute('aria-hidden', 'true');
+      sep.textContent = '\u00B7';
+      row.appendChild(sep);
+    }
+
+    const { peer, idStr } = entry;
+    const chip = document.createElement('div');
+    chip.className =
+      typeof onActivatePeerCard === 'function'
+        ? 'social-peer-chip social-peer-chip--action'
+        : 'social-peer-chip';
+    chip.dataset.peerSimId = idStr;
+
+    const av = document.createElement('div');
+    av.className = 'social-peer-avatar';
+    av.setAttribute('aria-hidden', 'true');
+    av.textContent = initialsFromPeer(peer);
+
+    const lines = document.createElement('div');
+    lines.className = 'social-peer-lines';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'social-peer-name';
+
+    /** @type {string} */
+    let displayName = '';
+    if (peer) {
+      displayName = simDisplayName(peer) || 'Unknown';
+      nameEl.textContent = displayName;
+    } else {
+      nameEl.textContent = 'Unknown peer';
+      nameEl.classList.add('social-peer-name--faded');
+    }
+
+    const sub = document.createElement('span');
+    sub.className = 'social-peer-sub';
+    if (peer?.is_npc === false) sub.textContent = 'Player household';
+    else if (peer?.is_npc === true) sub.textContent = 'NPC';
+    else if (!peer) sub.textContent = ''; // no id line — avoids giant numbers in UI
+
+    lines.append(nameEl);
+    if (sub.textContent) lines.append(sub);
+
+    chip.append(av, lines);
+    chip.title = peer ? `Expand ${displayName}'s card` : `Expand this sim's card`;
+    if (typeof onActivatePeerCard === 'function') {
+      chip.setAttribute('role', 'button');
+      chip.tabIndex = 0;
+      chip.setAttribute(
+        'aria-label',
+        peer
+          ? `Expand or collapse ${displayName}'s card (same as their name bar)`
+          : `Expand sim card ${idStr}`
+      );
+      const activate = () => onActivatePeerCard(idStr);
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        activate();
+      });
+      chip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          activate();
+        }
+      });
+    }
+
+    row.appendChild(chip);
+  });
+
+  sec.appendChild(row);
+  return sec;
+}
 
 export function buildInteractionsSection(sim) {
   const wrap = document.createElement('div');
@@ -178,21 +303,25 @@ export function fillInfoFromSim(infoEl, sim, extraTagLabel) {
  * @param {object} sim
  * @param {(simId: string, action: string) => void} sendCommand
  * @param {Array<object>} historyEntries
+ * @param {object[]|undefined} allSims
+ * @param {(wirePeerId: string) => void} [onActivatePeerCard]
  */
-export function updateCardLive(card, sim, sendCommand, historyEntries) {
+export function updateCardLive(card, sim, sendCommand, historyEntries, allSims, onActivatePeerCard) {
   card._viewerLastSim = sim;
   card.dataset.present = '1';
   card.classList.remove('off-lot');
   fillInfoFromSim(card.querySelector('.info'), sim, null);
   const expandedBody = card.querySelector('.expanded-body');
-  expandedBody.replaceChildren(
-    buildDetailGrid(sim),
-    buildInteractionsSection(sim),
-    buildActions(sim, sendCommand, historyEntries)
-  );
+
+  /** @type {HTMLElement[]} */
+  const parts = [buildDetailGrid(sim)];
+  const social = buildSocialPartnersSection(sim, allSims, onActivatePeerCard);
+  if (social) parts.push(social);
+  parts.push(buildInteractionsSection(sim), buildActions(sim, sendCommand, historyEntries));
+  expandedBody.replaceChildren(...parts);
 }
 
-export function updateCardOffLot(card) {
+export function updateCardOffLot(card, allSims, onActivatePeerCard) {
   card.dataset.present = '0';
   card.classList.add('off-lot');
   const sim = card._viewerLastSim;
@@ -217,7 +346,11 @@ export function updateCardOffLot(card) {
     note.className = 'detail';
     note.style.marginBottom = '0.35rem';
     note.textContent = 'Last snapshot (stale):';
-    expandedBody.append(note, buildDetailGrid(sim), buildInteractionsSection(sim));
+    const social = buildSocialPartnersSection(sim, allSims, onActivatePeerCard);
+    const parts = [note, buildDetailGrid(sim)];
+    if (social) parts.push(social);
+    parts.push(buildInteractionsSection(sim));
+    expandedBody.append(...parts);
   }
 }
 
@@ -226,8 +359,10 @@ export function updateCardOffLot(card) {
  * @param {(simId: string, action: string) => void} sendCommand
  * @param {() => void} onExpandToggle reorder grid after expanded state changes
  * @param {Array<object>} historyEntries
+ * @param {object[]|undefined} allSims
+ * @param {(wirePeerId: string) => void} [onActivatePeerCard]
  */
-export function createCard(sim, sendCommand, onExpandToggle, historyEntries) {
+export function createCard(sim, sendCommand, onExpandToggle, historyEntries, allSims, onActivatePeerCard) {
   const id = stableSimId(sim);
   const card = document.createElement('div');
   card.className = 'sim-card';
@@ -250,6 +385,6 @@ export function createCard(sim, sendCommand, onExpandToggle, historyEntries) {
     onExpandToggle();
   });
 
-  updateCardLive(card, sim, sendCommand, historyEntries);
+  updateCardLive(card, sim, sendCommand, historyEntries, allSims, onActivatePeerCard);
   return card;
 }

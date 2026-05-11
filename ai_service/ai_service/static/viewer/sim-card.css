@@ -218,6 +218,111 @@
   margin-top: 0.25rem;
 }
 
+.social-peer-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  align-items: stretch;
+}
+
+.social-peer-sep {
+  flex-shrink: 0;
+  align-self: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--plumbob-deep);
+  padding: 0 0.1rem;
+  opacity: 0.55;
+  user-select: none;
+}
+
+.social-peer-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 9rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--radius-widget);
+  border: 2px solid var(--plumbob);
+  background: linear-gradient(
+    165deg,
+    var(--cream-deep) 0%,
+    var(--plumbob-tint) 100%
+  );
+  box-shadow: 0 1px 3px rgb(36 92 74 / 0.12);
+}
+
+.social-peer-avatar {
+  flex-shrink: 0;
+  width: 2.05rem;
+  height: 2.05rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--plumbob-deep);
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2);
+}
+
+.social-peer-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.social-peer-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--fg);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-peer-name--faded {
+  color: var(--muted);
+}
+
+.social-peer-sub {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-peer-chip--action {
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.social-peer-chip--action:hover {
+  transform: translateY(-1px);
+  border-color: var(--plumbob-deep);
+  box-shadow: 0 4px 12px var(--shadow), 0 0 0 2px var(--plumbob-glow);
+}
+
+.social-peer-chip--action:active {
+  transform: translateY(0);
+}
+
+.social-peer-chip--action:focus-visible {
+  outline: 2px solid var(--warn);
+  outline-offset: 2px;
+}
+
 /* ── History button (secondary action style) ── */
 .action-btn--secondary {
   background: var(--panel);

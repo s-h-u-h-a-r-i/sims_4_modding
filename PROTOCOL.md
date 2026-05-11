@@ -67,7 +67,7 @@ One request carries the current world snapshot; the response carries all decisio
 | `world.zone_id` | integer \| null | Current zone id when available. |
 | `world.sims` | array | One object per **instanced** Sim in the zone (see below). |
 | `outcomes` | array | Optional. Outcomes for decisions **dispatched in the previous** tick response (see below). On the wire the mod **omits** this key when there are none (first tick, or no prior decisions). |
-| `logs` | array | Optional. Buffered mod log lines for the viewer (`logutil`); levels `debug`, `info`, `error`. Omitted when there is nothing to drain. |
+| `logs` | array | Optional. Buffered mod log lines for the viewer (`logutil`); levels `debug`, `info`, `error`. Omitted when nothing is drained. **Max entries per drain** depends on baked mod profile (`npc_ai_mod/npc_ai_mod/config/profiles/` → `generated.py`, e.g. production 250 vs development thousands when SI dumps are enabled). |
 
 **Per-sim entry** (`SerializedSim` / `sim_state.serialize_sim`):
 
@@ -83,6 +83,7 @@ One request carries the current world snapshot; the response carries all decisio
 | `zone_id` | integer \| null | Sim’s zone id when set. |
 | `interactions_running` | array | `{ "interaction_id", "interaction_id_str", "class_name" }` per running super interaction. |
 | `interactions_queue` | array | Same fields plus `is_queue_head` (boolean). |
+| `social_partner_sim_ids` | array[string] | Other Sim ids (**stringified**) that share SI social-thread linkage or inferred **shared-prop** cohort (same snapshot); safe for JS `BigInt` round-trip via `sim_id_str`. |
 
 **Outcome item** (matches `OutcomeSchema` / `DecisionOutcome`):
 

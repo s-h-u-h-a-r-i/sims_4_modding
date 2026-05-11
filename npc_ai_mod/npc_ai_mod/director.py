@@ -12,7 +12,7 @@ import alarms
 from alarms import AlarmHandle
 from clock import interval_in_real_seconds
 
-from . import actions, bridge, sim_state
+from . import actions, bridge, config, sim_state
 from .logutil import drain_logs_for_tick, log_debug, log_error, log_info
 from .runtime import is_game_paused
 from .schemas import DecisionOutcome, TickInfo, TickPayload
@@ -232,7 +232,7 @@ class Director:
 
         try:
             payload = self._build_payload()
-            logs_batch = drain_logs_for_tick(250)
+            logs_batch = drain_logs_for_tick(config.MOD_LOG_DRAIN_PER_TICK)
             if logs_batch:
                 payload = replace(payload, logs=logs_batch)
             response = bridge.post_tick(payload)
@@ -340,6 +340,10 @@ def _fingerprint_diff(
                 parts.append(f"sim {sid} running {dict(o_run)} → {dict(n_run)}")
             if o_q != n_q:
                 parts.append(f"sim {sid} queued {dict(o_q)} → {dict(n_q)}")
+    op = old[3] if len(old) >= 4 else ()
+    np = new[3] if len(new) >= 4 else ()
+    if op != np:
+        parts.append("partner wire edges changed")
     return "; ".join(parts) if parts else "(no visible diff)"
 
 

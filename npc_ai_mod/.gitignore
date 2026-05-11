@@ -29,6 +29,9 @@ npc_ai_mod.log
 # Environment variables
 .env
 
+# Build-time baked profile (see scripts/build.py / repo root build.py)
+npc_ai_mod/config/generated.py
+
 # Editor
 .idea/
 .vscode/

@@ -1,6 +1,55 @@
 export function stableSimId(sim) {
   if (!sim) return '';
-  return String(sim.sim_id_str != null ? sim.sim_id_str : sim.sim_id);
+  if (sim.sim_id_str != null && String(sim.sim_id_str).length) return String(sim.sim_id_str).trim();
+  if (sim.sim_id != null) return String(sim.sim_id).trim();
+  return '';
+}
+
+/**
+ * Normalize id from partner list (string or truncated number).
+ * @param {string} partnerIdStr
+ * @param {object[]|undefined} allSims
+ * @returns {object|null}
+ */
+export function resolveSimOnRoster(partnerIdStr, allSims) {
+  const t = partnerIdStr == null ? '' : String(partnerIdStr).trim();
+  if (!t || !Array.isArray(allSims)) return null;
+
+  for (const s of allSims) {
+    const k = stableSimId(s);
+    if (k && k === t) return s;
+  }
+
+  try {
+    const want = BigInt(t);
+    for (const s of allSims) {
+      const sid = stableSimId(s);
+      if (!sid) continue;
+      try {
+        if (BigInt(sid.trim()) === want) return s;
+      } catch {
+        /* skip */
+      }
+    }
+  } catch {
+    /* not a bigint decimal */
+  }
+
+  if (t.length >= 10) {
+    const suf = t.slice(-Math.min(12, t.length));
+    let candidate = null;
+    for (const s of allSims) {
+      const sid = stableSimId(s);
+      if (!sid) continue;
+      if (sid === t || sid.endsWith(suf)) {
+        if (candidate !== null && stableSimId(candidate) !== sid) return null;
+        candidate = s;
+      }
+    }
+    return candidate;
+  }
+
+  return null;
 }
 
 export function cap(s) {

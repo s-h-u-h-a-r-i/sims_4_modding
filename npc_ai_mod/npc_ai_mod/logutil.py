@@ -8,6 +8,13 @@ _MAX_BUFFER = 500
 _LOG_BUFFER: typing.List[LogEntry] = []
 
 
+def set_max_log_buffer(cap: int) -> None:
+    """Raise backlog so bursts (e.g. SI dumps) are not clipped before drain."""
+
+    global _MAX_BUFFER
+    _MAX_BUFFER = max(500, int(cap))
+
+
 def log_debug(tag: str, detail: str) -> None:
     _enqueue("debug", tag, detail)
 

@@ -8,9 +8,9 @@ in real time.
 
 1. The mod monkey-patches two game engine methods (`VenueService` and `Zone`) to
    detect when a zone loads or unloads.
-2. A repeating probe alarm fires every 0.75 s, taking a cheap
-   "activity fingerprint" of every instanced Sim's running and queued
-   interactions (noise classes such as idle overlays are excluded).
+2. A repeating probe alarm fires every 0.75 s, hashing **activity fingerprints**
+   (running/queued affordance multisets — idle-style classes excluded — plus **partner-wire**
+   tuples so co-presence can dirty probes without multiset churn).
 3. When the fingerprint changes (confirmed across two consecutive probes), a
    debounce timer arms. After 0.35 s of quiet the mod POSTs the full world
    snapshot to the AI service at `http://127.0.0.1:8765/v1/tick`.
@@ -26,6 +26,7 @@ and data-flow diagrams.
 npc_ai_mod/
 ├── npc_ai_mod/           # mod source package (deployed as .ts4script)
 │   ├── __init__.py
+│   ├── config/           # profiles/ + generated.py (see Building)
 │   ├── hooks.py          # game-engine monkey-patches
 │   ├── director.py       # probe/debounce/tick orchestration
 │   ├── bridge.py         # HTTP client → ai_service
@@ -55,8 +56,11 @@ uv run pytest         # run all tests
 ## Building and deploying
 
 ```bash
-# Build only
+# Build only (default profile: production — see config/profiles/)
 python scripts/build.py
+
+# Verbose SI dumps + larger log drain per tick (development profile)
+python scripts/build.py --profile development
 
 # Build and copy to your Mods folder
 python scripts/build.py --deploy
@@ -65,6 +69,10 @@ python scripts/build.py --deploy
 SIMS4_MODS_DIR="/path/to/Mods" python scripts/build.py --deploy
 ```
 
+Each build copies `config/profiles/<profile>.py` to **`config/generated.py`**
+(gitignored). If that file is missing, the mod falls back to production
+constants at import time.
+
 The output archive is written to `dist/npc_ai_mod.ts4script`.
 
 Enable **Script Mods** in the Sims 4 game options, then drop the archive into
@@ -72,12 +80,15 @@ your Mods folder (one subfolder deep is fine).
 
 ## Logging
 
-Debug lines wait in a short in-memory staging list until the next `/v1/tick`
-POST is built: up to **250** entries are drained into the JSON `logs` field per
-request, then removed from the mod (there is **no retry** if the POST fails;
-long-lived storage is the viewer **localStorage**). If the bridge stays down,
-the staging list truncates at **500** oldest-first. Levels: `debug`, `info`,
-`error`. The staging list clears when the script package reloads.
+Debug lines wait in an in-memory staging list until the next `/v1/tick` POST is
+built. Per tick, **`drain_logs_for_tick`** pulls at most **`MOD_LOG_DRAIN_PER_TICK`**
+(from the active profile) into the JSON `logs` field, then removes them from the
+mod (there is **no retry** if the POST fails; long-lived storage is viewer
+**localStorage**). **`LOG_STAGING_MAX`** caps backlog (oldest dropped first when
+too many lines arrive before a POST). **`development`** raises both limits and
+enables chunked **SI_DUMP** logging (heavy payloads).
+
+Levels: `debug`, `info`, `error`. The staging list clears when the script reloads.
 
 The legacy `npc_ai_mod.log` file is no longer used.
 

@@ -18,6 +18,15 @@ Options
 Output
 ------
     dist/npc_ai_mod.ts4script
+
+Profiles
+--------
+    Bake ``npc_ai_mod/config/generated.py`` from ``config/profiles/<name>.py``:
+
+        python scripts/build.py --profile production
+        python scripts/build.py --profile development --deploy
+
+    Default profile is ``production``.
 """
 
 import argparse
@@ -36,6 +45,21 @@ SRC_DIR = os.path.join(PROJECT_ROOT, "npc_ai_mod")
 DIST_DIR = os.path.join(PROJECT_ROOT, "dist")
 ARCHIVE_NAME = "npc_ai_mod.ts4script"
 ARCHIVE_PATH = os.path.join(DIST_DIR, ARCHIVE_NAME)
+
+CONFIG_PKG = os.path.join(SRC_DIR, "config")
+PROFILE_DIR = os.path.join(CONFIG_PKG, "profiles")
+GENERATED_CONFIG = os.path.join(CONFIG_PKG, "generated.py")
+
+
+def materialize_build_config(profile: str) -> None:
+    """Copy profiles/<profile>.py → config/generated.py."""
+    src = os.path.join(PROFILE_DIR, f"{profile}.py")
+    if not os.path.isfile(src):
+        print(f"[error] Unknown profile or missing file: {src}", file=sys.stderr)
+        sys.exit(1)
+    shutil.copy2(src, GENERATED_CONFIG)
+    rel = os.path.relpath(GENERATED_CONFIG, PROJECT_ROOT)
+    print(f"[build] config profile {profile!r} → {rel}")
 
 # Override via env var or edit this path for your machine.
 MODS_DIR = os.environ.get(
@@ -87,8 +111,15 @@ def main() -> None:
         action="store_true",
         help="Copy the built archive to the Sims 4 Mods folder after packaging.",
     )
+    parser.add_argument(
+        "--profile",
+        choices=("development", "production"),
+        default="production",
+        help="Bake config from config/profiles/<profile>.py into config/generated.py",
+    )
     args = parser.parse_args()
 
+    materialize_build_config(args.profile)
     build()
     if args.deploy:
         deploy()
