@@ -9,6 +9,8 @@ from ..schemas import DecisionOutcome, ServerDecision
 from .registry import ACTION_HANDLERS
 from .sim_lookup import find_sim_info
 
+__all__ = ("apply_decisions",)
+
 
 def apply_decisions(
     decisions: typing.Sequence[ServerDecision],

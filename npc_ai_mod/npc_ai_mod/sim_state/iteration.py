@@ -7,8 +7,12 @@ import typing
 from interactions.base.super_interaction import SuperInteraction
 from sims.sim import Sim
 
+__all__ = ("iter_actor_and_queue_super_interactions",)
 
-def iter_actor_and_queue_super_interactions(sim: Sim) -> typing.Iterator[SuperInteraction]:
+
+def iter_actor_and_queue_super_interactions(
+    sim: Sim,
+) -> typing.Iterator[SuperInteraction]:
     try:
         for si in sim.si_state.sis_actor_gen():
             yield si

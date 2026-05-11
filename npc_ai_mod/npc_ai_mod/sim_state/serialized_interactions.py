@@ -9,14 +9,7 @@ from sims.sim import Sim
 
 from ..schemas import QueuedInteraction, RunningInteraction
 
-
-def _serialize_running_interaction(si: SuperInteraction) -> RunningInteraction:
-    """Minimal snapshot for the viewer (and future cancel by id)."""
-    return RunningInteraction(
-        interaction_id=int(si.id),
-        interaction_id_str=str(si.id),
-        class_name=si.__class__.__name__,
-    )
+__all__ = ("interactions_for_sim",)
 
 
 def interactions_for_sim(
@@ -53,3 +46,12 @@ def interactions_for_sim(
         pass
 
     return running, queued
+
+
+def _serialize_running_interaction(si: SuperInteraction) -> RunningInteraction:
+    """Minimal snapshot for the viewer (and future cancel by id)."""
+    return RunningInteraction(
+        interaction_id=int(si.id),
+        interaction_id_str=str(si.id),
+        class_name=si.__class__.__name__,
+    )

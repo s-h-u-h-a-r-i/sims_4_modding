@@ -10,9 +10,9 @@ from __future__ import annotations
 
 try:
     from .generated import (
-        PROFILE_NAME,
         LOG_STAGING_MAX,
         MOD_LOG_DRAIN_PER_TICK,
+        PROFILE_NAME,
         VERBOSE_SIM_INTERACTION_DUMP,
     )
 except ImportError:

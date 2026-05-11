@@ -19,6 +19,8 @@ from .schemas import DecisionOutcome, TickInfo, TickPayload
 from .sim_state import WorldFingerprint
 from .utils import iso_utc_now
 
+__all__ = ("director",)
+
 # How often we compare fingerprints (game activity probe, real wall clock).
 _PROBE_REAL_SECONDS = 0.75
 # After the world stops changing, wait this long before sending one tick (coalesce bursts).

@@ -8,11 +8,31 @@ from interactions.base.super_interaction import SuperInteraction
 from sims.sim import Sim
 
 from ..schemas import SerializedSim
-from ._filters import si_class_excluded_from_activity_object_merge
-from ._iteration import iter_actor_and_queue_super_interactions
+from .filters import si_class_excluded_from_activity_object_merge
 from .instanced import get_instanced_sim_infos
+from .iteration import iter_actor_and_queue_super_interactions
 from .partners import social_partner_sim_ids, strict_partner_sim_id
 from .types_defs import PartnerWireFingerprint
+
+__all__ = (
+    "partner_wire_fingerprint",
+    "merge_shared_activity_object_partners_into_sims",
+)
+
+
+def partner_wire_fingerprint() -> PartnerWireFingerprint:
+    """Fourth component of ``WorldFingerprint`` — keeps POSTs flowing when cohorts churn."""
+    g = _partner_graph_instanced_wire()
+    return tuple((sid, tuple(sorted(mates))) for sid, mates in sorted(g.items()))
+
+
+def merge_shared_activity_object_partners_into_sims(
+    sims: typing.List[SerializedSim],
+) -> None:
+    merged = _partner_graph_instanced_wire()
+    lookup = {int(s.sim_id): s for s in sims}
+    for sid, row in lookup.items():
+        row.social_partner_sim_ids = sorted(merged.get(sid, set()))
 
 
 def _activity_object_id_from_si(si: SuperInteraction) -> typing.Optional[int]:
@@ -77,18 +97,3 @@ def _partner_graph_instanced_wire() -> typing.Dict[int, typing.Set[int]]:
             by_sid.setdefault(sid, set()).update(x for x in cohort if x != sid)
 
     return by_sid
-
-
-def partner_wire_fingerprint() -> PartnerWireFingerprint:
-    """Fourth component of ``WorldFingerprint`` — keeps POSTs flowing when cohorts churn."""
-    g = _partner_graph_instanced_wire()
-    return tuple((sid, tuple(sorted(mates))) for sid, mates in sorted(g.items()))
-
-
-def merge_shared_activity_object_partners_into_sims(
-    sims: typing.List[SerializedSim],
-) -> None:
-    merged = _partner_graph_instanced_wire()
-    lookup = {int(s.sim_id): s for s in sims}
-    for sid, row in lookup.items():
-        row.social_partner_sim_ids = sorted(merged.get(sid, set()))

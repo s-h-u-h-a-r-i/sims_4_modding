@@ -11,6 +11,8 @@ from clock import interval_in_real_seconds
 from .logutil import log_error
 from .sim_state.types_defs import WorldFingerprint
 
+__all__ = ("ManagedAlarm", "fingerprint_diff")
+
 
 class ManagedAlarm:
     """Wraps a single Sims 4 real-time alarm handle with safe schedule/cancel."""

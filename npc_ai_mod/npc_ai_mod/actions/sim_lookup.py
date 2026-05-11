@@ -7,6 +7,8 @@ import typing
 import services
 from sims.sim_info import SimInfo
 
+__all__ = ("find_sim_info",)
+
 
 def find_sim_info(sim_id: int) -> typing.Optional[SimInfo]:
     manager = services.sim_info_manager()

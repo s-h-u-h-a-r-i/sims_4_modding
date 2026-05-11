@@ -12,6 +12,8 @@ from sims.sim_info import SimInfo
 
 from ...logutil import log_error, log_info
 
+__all__ = ("apply_go_home",)
+
 
 def apply_go_home(sim_info: SimInfo) -> typing.Tuple[bool, typing.Optional[str]]:
     try:

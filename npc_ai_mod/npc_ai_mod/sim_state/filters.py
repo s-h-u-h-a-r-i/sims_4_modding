@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import typing
 
+__all__ = (
+    "si_class_is_background_noise",
+    "si_class_excluded_from_activity_object_merge",
+)
+
 # Same sets used for activity fingerprints and shared-object cohort detection.
 _FP_EXCLUDE_EXACT: frozenset[str] = frozenset(
     {

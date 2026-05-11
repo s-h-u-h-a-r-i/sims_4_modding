@@ -14,99 +14,14 @@ from sims.sim_info import SimInfo
 from ..config import LOG_STAGING_MAX, VERBOSE_SIM_INTERACTION_DUMP
 from ..logutil import log_debug, set_max_log_buffer
 
+__all__ = ("verbose_si_dump_for_actor",)
+
 _VERBOSE_DUMP_LOG_CAPACITY = False
 
 _ATTR_REPR_SOFT = 520
 _DUMP_SOFT_PAYLOAD = 7500
 _MAX_DUMP_PARTS_PER_ACTOR = 480
 _MAX_DUMP_CHARS_PER_ACTOR = 800_000
-
-
-def verbose_si_dump_enabled() -> bool:
-    return VERBOSE_SIM_INTERACTION_DUMP
-
-
-def _ensure_verbose_dump_log_capacity() -> None:
-    global _VERBOSE_DUMP_LOG_CAPACITY
-    if not VERBOSE_SIM_INTERACTION_DUMP or _VERBOSE_DUMP_LOG_CAPACITY:
-        return
-    set_max_log_buffer(LOG_STAGING_MAX)
-    _VERBOSE_DUMP_LOG_CAPACITY = True
-
-
-def _squash_repr(val: typing.Any, soft: int = _ATTR_REPR_SOFT) -> str:
-    try:
-        if isinstance(val, SimInfo):
-            return "SimInfo(id=%s cls=%s)" % (val.id, val.__class__.__name__)
-        if isinstance(val, Sim):
-            sid = getattr(val, "id", "?")
-            return "Sim(id=%s cls=%s)" % (sid, val.__class__.__name__)
-        if isinstance(val, SuperInteraction):
-            return "SuperInteraction(cls=%s id=%s pyid=%s)" % (
-                val.__class__.__name__,
-                getattr(val, "id", "?"),
-                id(val),
-            )
-        if isinstance(val, dict):
-            if len(val) <= 18:
-                s = repr(val)
-            else:
-                ks = ",".join(repr(k) for k in list(val.keys())[:42])
-                s = "{dict len=%s keys=%s}" % (len(val), ks[: soft - 26])
-        elif isinstance(val, (frozenset, set, tuple, list)):
-            s = "%s[len=%s] %s" % (
-                type(val).__name__,
-                len(val),
-                repr(tuple(val)[:12])[: soft - 32],
-            )
-        else:
-            s = repr(val)
-    except Exception as exc:
-        return "<reprfail %s>" % (exc,)
-    if len(s) <= soft:
-        return s
-    return "%s…[%s chars]" % (s[:soft], len(s))
-
-
-def _lines_for_super_interaction(
-    si: SuperInteraction, where: str, seq: int
-) -> typing.Iterator[str]:
-    cls = si.__class__.__name__
-    si_ea_id = getattr(si, "id", "?")
-    yield "%%% where={} seq={} class={} si.id={} pyid={}".format(
-        where,
-        seq,
-        cls,
-        si_ea_id,
-        id(si),
-    )
-    try:
-        names = sorted(dir(si))
-    except Exception as exc:
-        yield "### dir(si) failed: %s" % (exc,)
-        return
-
-    for name in names:
-        if name.startswith("__") and name.endswith("__"):
-            continue
-        try:
-            val = getattr(si, name)
-        except Exception as exc:
-            yield "%s=<getter %s>" % (name, exc)
-            continue
-        try:
-            if callable(val):
-                qn = getattr(val, "__qualname__", None) or getattr(val, "__name__", "?")
-                yield "%s=<callable %s>" % (name, qn)
-                continue
-        except Exception:
-            pass
-        try:
-            txt = _squash_repr(val)
-        except Exception as exc:
-            yield "%s=<squashfail %s>" % (name, exc)
-            continue
-        yield "%s=%s" % (name, txt)
 
 
 def verbose_si_dump_for_actor(
@@ -204,3 +119,86 @@ def verbose_si_dump_for_actor(
             "[%s] TRUNCATED reason=%s parts=%s ~chars=%s"
             % (actor, aborted_reason, parts, chars_budget),
         )
+
+
+def _ensure_verbose_dump_log_capacity() -> None:
+    global _VERBOSE_DUMP_LOG_CAPACITY
+    if not VERBOSE_SIM_INTERACTION_DUMP or _VERBOSE_DUMP_LOG_CAPACITY:
+        return
+    set_max_log_buffer(LOG_STAGING_MAX)
+    _VERBOSE_DUMP_LOG_CAPACITY = True
+
+
+def _squash_repr(val: typing.Any, soft: int = _ATTR_REPR_SOFT) -> str:
+    try:
+        if isinstance(val, SimInfo):
+            return "SimInfo(id=%s cls=%s)" % (val.id, val.__class__.__name__)
+        if isinstance(val, Sim):
+            sid = getattr(val, "id", "?")
+            return "Sim(id=%s cls=%s)" % (sid, val.__class__.__name__)
+        if isinstance(val, SuperInteraction):
+            return "SuperInteraction(cls=%s id=%s pyid=%s)" % (
+                val.__class__.__name__,
+                getattr(val, "id", "?"),
+                id(val),
+            )
+        if isinstance(val, dict):
+            if len(val) <= 18:
+                s = repr(val)
+            else:
+                ks = ",".join(repr(k) for k in list(val.keys())[:42])
+                s = "{dict len=%s keys=%s}" % (len(val), ks[: soft - 26])
+        elif isinstance(val, (frozenset, set, tuple, list)):
+            s = "%s[len=%s] %s" % (
+                type(val).__name__,
+                len(val),
+                repr(tuple(val)[:12])[: soft - 32],
+            )
+        else:
+            s = repr(val)
+    except Exception as exc:
+        return "<reprfail %s>" % (exc,)
+    if len(s) <= soft:
+        return s
+    return "%s…[%s chars]" % (s[:soft], len(s))
+
+
+def _lines_for_super_interaction(
+    si: SuperInteraction, where: str, seq: int
+) -> typing.Iterator[str]:
+    cls = si.__class__.__name__
+    si_ea_id = getattr(si, "id", "?")
+    yield "%%% where={} seq={} class={} si.id={} pyid={}".format(
+        where,
+        seq,
+        cls,
+        si_ea_id,
+        id(si),
+    )
+    try:
+        names = sorted(dir(si))
+    except Exception as exc:
+        yield "### dir(si) failed: %s" % (exc,)
+        return
+
+    for name in names:
+        if name.startswith("__") and name.endswith("__"):
+            continue
+        try:
+            val = getattr(si, name)
+        except Exception as exc:
+            yield "%s=<getter %s>" % (name, exc)
+            continue
+        try:
+            if callable(val):
+                qn = getattr(val, "__qualname__", None) or getattr(val, "__name__", "?")
+                yield "%s=<callable %s>" % (name, qn)
+                continue
+        except Exception:
+            pass
+        try:
+            txt = _squash_repr(val)
+        except Exception as exc:
+            yield "%s=<squashfail %s>" % (name, exc)
+            continue
+        yield "%s=%s" % (name, txt)

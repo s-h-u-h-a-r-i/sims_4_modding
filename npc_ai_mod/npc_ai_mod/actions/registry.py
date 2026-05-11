@@ -6,7 +6,10 @@ import typing
 
 from sims.sim_info import SimInfo
 
-from .handlers.go_home import apply_go_home
+from .handlers import apply_go_home
+
+__all__ = ("ACTION_HANDLERS",)
+
 
 ActionHandler = typing.Callable[[SimInfo], typing.Tuple[bool, typing.Optional[str]]]
 

@@ -17,7 +17,9 @@ _orig_venue_loading_finished = VenueService.on_loading_screen_animation_finished
 _orig_zone_teardown = Zone.on_teardown
 
 
-def _on_venue_loading_finished(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+def _on_venue_loading_finished(
+    self, *args: typing.Any, **kwargs: typing.Any
+) -> typing.Any:
     result = _orig_venue_loading_finished(self, *args, **kwargs)
     from ..director import director
 

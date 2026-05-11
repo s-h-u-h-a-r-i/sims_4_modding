@@ -3,6 +3,8 @@
 import services
 from clock import ClockSpeedMode
 
+__all__ = ("is_game_paused",)
+
 
 def is_game_paused() -> bool:
     try:

@@ -4,6 +4,15 @@ import typing
 from .schemas import LogEntry
 from .utils import iso_utc_now
 
+__all__ = (
+    "set_max_log_buffer",
+    "log_debug",
+    "log_info",
+    "log_error",
+    "clear_session_log",
+    "drain_logs_for_tick",
+)
+
 _MAX_BUFFER = 500
 _LOG_BUFFER: typing.List[LogEntry] = []
 

@@ -8,7 +8,9 @@ from interactions.base.super_interaction import SuperInteraction
 from sims.sim import Sim
 from sims.sim_info import SimInfo
 
-from ._iteration import iter_actor_and_queue_super_interactions
+from .iteration import iter_actor_and_queue_super_interactions
+
+__all__ = ("strict_partner_sim_id", "social_partner_sim_ids")
 
 _SOCIAL_GROUP_MEMBER_ATTRS: typing.Tuple[str, ...] = (
     "_sim_infos",
@@ -64,6 +66,17 @@ def strict_partner_sim_id(obj: typing.Any) -> typing.Optional[int]:
             pass
         return None
     return None
+
+
+def social_partner_sim_ids(sim: Sim, self_sim_id: int) -> typing.List[int]:
+    """Other Sims reachable from explicit social-ish SI participant state."""
+    uniq: typing.Set[int] = set()
+    try:
+        for si in _all_super_interactions_on_sim(sim):
+            uniq |= _partner_ids_from_super_interaction(si, self_sim_id)
+    except Exception:
+        pass
+    return sorted(uniq)
 
 
 def _ids_from_maybe_iterable(coll: typing.Any) -> typing.Iterable[int]:
@@ -233,14 +246,3 @@ def _partner_ids_from_super_interaction(
 
 def _all_super_interactions_on_sim(sim: Sim) -> typing.List[SuperInteraction]:
     return list(iter_actor_and_queue_super_interactions(sim))
-
-
-def social_partner_sim_ids(sim: Sim, self_sim_id: int) -> typing.List[int]:
-    """Other Sims reachable from explicit social-ish SI participant state."""
-    uniq: typing.Set[int] = set()
-    try:
-        for si in _all_super_interactions_on_sim(sim):
-            uniq |= _partner_ids_from_super_interaction(si, self_sim_id)
-    except Exception:
-        pass
-    return sorted(uniq)

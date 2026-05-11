@@ -7,6 +7,8 @@ import typing
 import services
 from sims.sim_info import SimInfo
 
+__all__ = ("get_instanced_sim_infos",)
+
 
 def get_instanced_sim_infos() -> typing.List[SimInfo]:
     """Return SimInfo objects for all Sims currently instantiated in the zone."""

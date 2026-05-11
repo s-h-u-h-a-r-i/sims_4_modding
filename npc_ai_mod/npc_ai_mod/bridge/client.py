@@ -3,8 +3,15 @@ import json
 import typing
 
 from ..logutil import log_error
-from ..schemas import TickPayload, TickResponse, parse_tick_response, tick_payload_to_wire
+from ..schemas import (
+    TickPayload,
+    TickResponse,
+    parse_tick_response,
+    tick_payload_to_wire,
+)
 from .constants import HOST, PATH, PORT, TIMEOUT_SEC
+
+__all__ = ("post_tick",)
 
 
 def post_tick(
