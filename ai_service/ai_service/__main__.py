@@ -37,7 +37,10 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="npc ai bridge",
     version=__version__,
-    description="HTTP bridge between npc_ai_mod and your AI/policy layer. See PROTOCOL.md.",
+    description=(
+        "WebSocket tick bridge for npc_ai_mod and your viewer/AI pipeline. "
+        "See PROTOCOL.md."
+    ),
     lifespan=lifespan,
 )
 

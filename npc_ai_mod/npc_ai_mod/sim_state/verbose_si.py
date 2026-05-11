@@ -1,6 +1,6 @@
 """
 Exhaustive SuperInteraction dumps (development profile only by default).
-Sends large ``logs`` payloads each tick — watch HTTP timeout/size if ticks fail.
+Sends large ``logs`` payloads each tick — watch bridge timeout/size if ticks fail.
 """
 
 from __future__ import annotations

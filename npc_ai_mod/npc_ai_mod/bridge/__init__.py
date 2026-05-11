@@ -1,3 +1,3 @@
-"""HTTP client to the local AI tick service."""
+"""WebSocket bridge client for the local AI tick service."""
 
-from .client import *
+from .ws_tick import *

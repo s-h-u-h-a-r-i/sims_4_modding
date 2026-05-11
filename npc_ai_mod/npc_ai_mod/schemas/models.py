@@ -62,18 +62,18 @@ class TickInfo:
 
 @dataclass
 class DecisionOutcome:
-    decision_id: t.Any
+    decision_id: str
     status: str
     reason: t.Optional[str] = None
 
 
 @dataclass
 class ServerDecision:
-    """One decision object from ``POST /v1/tick`` JSON (``id``/``action``/``sim_id``)."""
+    """One decision object from a ``/v1/tick`` WebSocket response (``id`` / ``action`` / ``sim_id``)."""
 
-    decision_id: t.Any
+    decision_id: t.Optional[str] = None
     action: t.Optional[str] = None
-    sim_id: t.Any = None
+    sim_id: t.Optional[t.Union[int, str]] = None
 
 
 @dataclass

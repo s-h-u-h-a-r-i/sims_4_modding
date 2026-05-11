@@ -1,6 +1,6 @@
 # ai_service
 
-FastAPI app implementing [`PROTOCOL.md`](../PROTOCOL.md) (`POST /v1/tick`).
+FastAPI app implementing [`PROTOCOL.md`](../PROTOCOL.md): **`WebSocket /v1/tick`** from the game mod plus the viewer APIs.
 
 ## Setup
 

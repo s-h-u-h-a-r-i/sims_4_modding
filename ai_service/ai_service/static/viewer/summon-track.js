@@ -52,7 +52,7 @@ export function beginSummonFlow(simCanon, card, sim) {
         variant: 'info',
         title: 'Still waiting on the game',
         body:
-          'Summon is queued until the next live tick from the mod. Unpause or wait for the game to post.',
+          'Summon is queued until the next live tick from the mod. Unpause or wait for the game to send another tick.',
         duration: 10000,
       });
     }, OUTCOME_WARN_MS),

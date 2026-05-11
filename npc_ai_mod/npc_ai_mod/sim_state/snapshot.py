@@ -1,4 +1,4 @@
-"""Build ``SerializedSim`` / ``WorldState`` for the HTTP bridge."""
+"""Build ``SerializedSim`` / ``WorldState`` for the tick bridge (WebSocket JSON)."""
 
 from __future__ import annotations
 

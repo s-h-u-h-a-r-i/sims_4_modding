@@ -21,7 +21,7 @@ __all__ = (
 
 
 def partner_wire_fingerprint() -> PartnerWireFingerprint:
-    """Fourth component of ``WorldFingerprint`` — keeps POSTs flowing when cohorts churn."""
+    """Fourth component of ``WorldFingerprint`` — keeps tick traffic flowing when cohorts churn."""
     g = _partner_graph_instanced_wire()
     return tuple((sid, tuple(sorted(mates))) for sid, mates in sorted(g.items()))
 

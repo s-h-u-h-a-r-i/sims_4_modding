@@ -14,7 +14,6 @@ from alarms import AlarmHandle
 from . import actions, bridge, config, sim_state
 from .director_support import ManagedAlarm, fingerprint_diff
 from .logutil import drain_logs_for_tick, log_debug, log_error, log_info
-from .runtime import is_game_paused
 from .schemas import DecisionOutcome, TickInfo, TickPayload
 from .sim_state import WorldFingerprint
 from .utils import iso_utc_now
@@ -34,12 +33,12 @@ _CLEAN_CONFIRM_TO_RESET = 2
 _MAX_WAIT_DIRTY_REAL_SECONDS = 4.0
 # Force a tick even when the world looks stable (fingerprint unchanged).
 # This is the maximum time a viewer command (e.g. "go home") can sit undelivered
-# when no gameplay event naturally triggers a POST first.
-_MAX_IDLE_POST_REAL_SECONDS = 5.0
+# when no gameplay event naturally triggers a bridge flush first.
+_MAX_IDLE_TICK_REAL_SECONDS = 5.0
 
-# Minimum real time between HTTP ticks (debounce/max_wait still schedule, but POST waits).
-# Stops POST ↔ immediate "dirty" ↔ POST tight loops when paired reads disagree with last_sent.
-_MIN_POST_INTERVAL_REAL_S = 1.25
+# Minimum real time between consecutive bridge round-trips (debounce/max_wait still arm, but send waits).
+# Stops tick → immediate "dirty" → tick tight loops when paired reads disagree with last_sent.
+_MIN_TICK_INTERVAL_REAL_S = 1.25
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +58,7 @@ class Director:
         self._consecutive_dirty_probes: int = 0
         self._consecutive_clean_probes: int = 0
         self._debug_unchanged_probe_streak: int = 0
-        self._last_post_monotonic: typing.Optional[float] = None
+        self._last_tick_monotonic: typing.Optional[float] = None
         self._pending_outcomes: typing.List[DecisionOutcome] = []
 
     # ------------------------------------------------------------------
@@ -74,7 +73,7 @@ class Director:
         self._consecutive_dirty_probes = 0
         self._consecutive_clean_probes = 0
         self._debug_unchanged_probe_streak = 0
-        self._last_post_monotonic = None
+        self._last_tick_monotonic = None
         self._probe_alarm.schedule(
             self,
             _PROBE_REAL_SECONDS,
@@ -88,14 +87,13 @@ class Director:
         """Called when leaving a zone."""
         self._probe_alarm.cancel()
         self._debounce_alarm.cancel()
+        bridge.reset_persistent_connection()
 
     # ------------------------------------------------------------------
     # Probe callback
     # ------------------------------------------------------------------
 
     def _on_probe_fire(self, _handle: AlarmHandle) -> None:
-        if is_game_paused():
-            return
         fp = sim_state.world_activity_fingerprint_if_stable()
         if fp is None:
             log_debug(
@@ -109,19 +107,19 @@ class Director:
             self._debug_unchanged_probe_streak += 1
             now = time.monotonic()
             if (
-                self._last_post_monotonic is not None
-                and now - self._last_post_monotonic >= _MAX_IDLE_POST_REAL_SECONDS
+                self._last_tick_monotonic is not None
+                and now - self._last_tick_monotonic >= _MAX_IDLE_TICK_REAL_SECONDS
             ):
                 log_debug(
                     "Director.probe",
-                    f"idle keepalive: {_MAX_IDLE_POST_REAL_SECONDS}s since last POST "
-                    "(flushing any queued viewer commands)",
+                    "idle keepalive: {}s since last successful tick flush "
+                    "(queued viewer commands)".format(_MAX_IDLE_TICK_REAL_SECONDS),
                 )
                 self._flush_tick("idle_keepalive")
                 return
             log_debug(
                 "Director.probe",
-                "no world fingerprint delta vs last successful tick (same as last POST); "
+                "no world fingerprint delta vs last successful tick (same as last bridge round-trip); "
                 f"unchanged_probe_streak={self._debug_unchanged_probe_streak}",
             )
             if self._consecutive_clean_probes >= _CLEAN_CONFIRM_TO_RESET:
@@ -161,7 +159,7 @@ class Director:
             diff = fingerprint_diff(self._last_sent_fingerprint, fp)
             log_debug(
                 "Director.probe",
-                "world dirty vs last tick: scheduled debounced POST "
+                "world dirty vs last tick: scheduled debounced bridge flush "
                 f"({_DEBOUNCE_REAL_SECONDS}s quiet) or max_wait {_MAX_WAIT_DIRTY_REAL_SECONDS}s"
                 f" | diff: {diff}",
             )
@@ -172,7 +170,7 @@ class Director:
         ):
             log_debug(
                 "Director",
-                "max_wait: forcing POST (fingerprint still changing over "
+                "max_wait: forcing bridge flush (fingerprint still changing over "
                 f"{_MAX_WAIT_DIRTY_REAL_SECONDS}s)",
             )
             self._flush_tick("max_wait")
@@ -180,7 +178,7 @@ class Director:
     def _on_debounce_fire(self, _handle: AlarmHandle) -> None:
         self._debounce_alarm.cancel()
         log_debug(
-            "Director", "debounce timer fired: attempting POST after quiet period"
+            "Director", "debounce timer fired: attempting tick flush after quiet period"
         )
         self._flush_tick("debounce")
 
@@ -210,8 +208,6 @@ class Director:
         )
 
     def _flush_tick(self, reason: typing.Optional[str] = None) -> None:
-        if is_game_paused():
-            return
         now = time.monotonic()
         fp = self._activity_fp()
         if fp == self._last_sent_fingerprint:
@@ -220,18 +216,18 @@ class Director:
             if reason:
                 log_debug(
                     "Director",
-                    f"skip POST: fingerprint unchanged vs last successful tick (reason={reason!r})",
+                    f"skip tick flush: fingerprint unchanged vs last successful tick (reason={reason!r})",
                 )
             return
 
         if (
             reason not in ("zone_load", "manual", "max_wait", "idle_keepalive")
-            and self._last_post_monotonic is not None
-            and now - self._last_post_monotonic < _MIN_POST_INTERVAL_REAL_S
+            and self._last_tick_monotonic is not None
+            and now - self._last_tick_monotonic < _MIN_TICK_INTERVAL_REAL_S
         ):
             log_debug(
                 "Director",
-                f"POST cooldown ({_MIN_POST_INTERVAL_REAL_S}s): deferring (reason={reason!r})",
+                f"tick interval cooldown ({_MIN_TICK_INTERVAL_REAL_S}s): deferring (reason={reason!r})",
             )
             return
 
@@ -242,14 +238,14 @@ class Director:
             logs_batch = drain_logs_for_tick(config.MOD_LOG_DRAIN_PER_TICK)
             if logs_batch:
                 payload = replace(payload, logs=logs_batch)
-            response = bridge.post_tick(payload)
+            response = bridge.exchange_tick(payload)
             if response:
                 self._dirty_since = None
                 self._pending_fingerprint = None
                 self._consecutive_dirty_probes = 0
                 self._consecutive_clean_probes = 0
                 self._debug_unchanged_probe_streak = 0
-                self._last_post_monotonic = time.monotonic()
+                self._last_tick_monotonic = time.monotonic()
                 decisions = response.decisions
                 if decisions:
                     log_info(
@@ -266,7 +262,7 @@ class Director:
                 if reason:
                     log_debug(
                         "Director",
-                        f"POST tick ({reason}): synced post-apply activity fingerprint "
+                        f"tick flushed ({reason}): synced activity fingerprint after applying decisions "
                         f"(paired_match={synced is not None})",
                     )
         except Exception as exc:

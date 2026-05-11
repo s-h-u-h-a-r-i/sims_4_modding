@@ -60,9 +60,23 @@ def parse_tick_response(raw: t.Dict[str, t.Any]) -> TickResponse:
     )
 
 
+def _wire_optional_sim_id(raw: t.Any) -> t.Optional[t.Union[int, str]]:
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, str):
+        return raw
+    return None
+
+
+def _wire_optional_str(raw: t.Any) -> t.Optional[str]:
+    if raw is None:
+        return None
+    return str(raw)
+
+
 def _server_decision_from_wire(row: t.Dict[str, t.Any]) -> ServerDecision:
     return ServerDecision(
-        decision_id=row.get("id"),
-        action=row.get("action"),
-        sim_id=row.get("sim_id"),
+        decision_id=_wire_optional_str(row.get("id")),
+        action=_wire_optional_str(row.get("action")),
+        sim_id=_wire_optional_sim_id(row.get("sim_id")),
     )

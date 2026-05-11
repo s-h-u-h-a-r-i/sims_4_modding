@@ -1,33 +1,31 @@
-from dataclasses import asdict
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from pydantic import ValidationError
 
-from fastapi import APIRouter
-
-from ai_service.deps import TickStoreDep, ViewerHubDep
-from ai_service.modules.tick.schemas import TickRequestSchema, TickResponseSchema
+from ai_service.deps import TickStoreWsDep, ViewerHubWsDep
+from ai_service.modules.tick.router.v1.handlers import tick_response_from_request
+from ai_service.modules.tick.schemas import TickRequestSchema
 
 __all__ = ("router",)
 
 router = APIRouter(prefix="/tick")
 
 
-@router.post("", response_model=TickResponseSchema)
-async def post_tick(
-    body: TickRequestSchema,
-    store: TickStoreDep,
-    hub: ViewerHubDep,
-) -> TickResponseSchema:
-    store.ensure_bridge_session(body.tick.bridge_session_id)
-    if body.outcomes:
-        store.record_outcomes([o.model_dump() for o in body.outcomes])
-    decisions = store.pop_commands()
-    response = TickResponseSchema(protocol_version="1.0", decisions=decisions)
-    log_payload = [e.model_dump() for e in body.logs]
-    store.note_tick_received()
-    hub.publish_tick_frame_threadsafe(
-        body.tick.model_dump(),
-        body.world.model_dump(),
-    )
-    hub.publish_snapshot_threadsafe(asdict(store.get_snapshot()))
-    if log_payload:
-        hub.publish_mod_logs_threadsafe(log_payload)
-    return response
+@router.websocket("")
+async def websocket_tick(
+    websocket: WebSocket,
+    store: TickStoreWsDep,
+    hub: ViewerHubWsDep,
+) -> None:
+    await websocket.accept()
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                body = TickRequestSchema.model_validate_json(raw)
+            except ValidationError:
+                await websocket.close(code=1007)
+                return
+            resp = tick_response_from_request(body, store, hub)
+            await websocket.send_text(resp.model_dump_json())
+    except WebSocketDisconnect:
+        pass

@@ -6,7 +6,7 @@ AI-driven control of NPC Sims.
 ## How it works
 
 1. After a save loads, the mod collects NPC Sim state (traits, motives, location, etc.)
-2. It sends that state to a local AI service over HTTP
+2. It sends that state to a local AI service over **WebSocket** (`/v1/tick`)
 3. The AI service returns decisions (which interactions to perform)
 4. The mod pushes those interactions onto the target Sims
 
@@ -98,9 +98,9 @@ See [`ai_service/README.md`](ai_service/README.md).
 npc_ai_mod/
   __init__.py    — entry point, registers game hooks
   hooks/         — VenueService / Zone monkey-patches (lazy `director` import)
-  director.py    — probe/debounce/POST orchestration
+  director.py    — probe/debounce / tick flush orchestration
   director_support.py — real-time alarms, fingerprint debug diff
-  bridge/        — HTTP client + constants to the external AI service
+  bridge/        — WebSocket tick client + constants to the external AI service
   actions/       — apply server decisions onto Sims (registry + handlers)
   schemas/       — tick/world dataclasses + JSON wire helpers
   sim_state/     — world snapshots, activity fingerprints, SI partner graph
@@ -114,7 +114,7 @@ ai_service/pyproject.toml — FastAPI service (use `uv` in `ai_service/`)
 pyrightconfig.json — Pyright: repo root `.` + `EA/` on extraPaths; Python 3.7 vs 3.10 per subtree
 .vscode/settings.json — Pylance `python.analysis.extraPaths` when opening the folder
 npc-ai-mod.code-workspace — open this workspace (repo root — recommended)
-PROTOCOL.md     — HTTP API between the mod and `ai_service`
+PROTOCOL.md     — WebSocket bridge JSON between the mod and `ai_service`
 ```
 
 ## Contributing

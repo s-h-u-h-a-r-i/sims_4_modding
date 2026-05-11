@@ -12,9 +12,10 @@ in real time.
    (running/queued affordance multisets — idle-style classes excluded — plus **partner-wire**
    tuples so co-presence can dirty probes without multiset churn).
 3. When the fingerprint changes (confirmed across two consecutive probes), a
-   debounce timer arms. After 0.35 s of quiet the mod POSTs the full world
-   snapshot to the AI service at `http://127.0.0.1:8765/v1/tick`.
-4. The AI service responds with a list of decisions; the mod applies each one
+   debounce timer arms. After 0.35 s of quiet the mod sends the full world
+   snapshot JSON over **`WebSocket ws://127.0.0.1:8765/v1/tick`** (persistent
+   connection while the zone is loaded).
+4. The AI service responds with decisions in the reply frame; the mod applies each one
    (currently supports `go_home`, `summon_sim`).
 
 See [docs/architecture.md](docs/architecture.md) for a detailed module breakdown
@@ -30,14 +31,13 @@ npc_ai_mod/
 │   ├── hooks/            # zone lifecycle monkey-patches (see hooks/zone_hooks.py)
 │   ├── director.py       # probe/debounce/tick orchestration
 │   ├── director_support.py  # real-time alarms + fingerprint debug diff
-│   ├── bridge/           # HTTP client + constants → ai_service
+│   ├── bridge/           # WebSocket (`ws_tick.py`) + `constants.py`
 │   │   ├── constants.py
-│   │   └── client.py
+│   │   └── ws_tick.py
 │   ├── actions/          # apply server decisions (handlers + registry + dispatch)
 │   │   ├── registry.py
 │   │   ├── dispatch.py
 │   │   └── handlers/
-│   ├── runtime.py        # paused-state probe (clock)
 │   ├── schemas/          # tick/world dataclasses + JSON wire helpers
 │   │   ├── models.py
 │   │   └── wire.py
@@ -58,7 +58,7 @@ npc_ai_mod/
 
 ## Requirements
 
-- **In-game runtime:** Python 3.7 (embedded in Sims 4 — no external packages).
+- **In-game runtime:** Python 3.7 (embedded in Sims 4 — stdlib-only WebSocket framing in `bridge/ws_tick.py`).
 - **Development:** any modern Python for the build script.
 
 ## Development setup
@@ -95,12 +95,12 @@ your Mods folder (one subfolder deep is fine).
 
 ## Logging
 
-Debug lines wait in an in-memory staging list until the next `/v1/tick` POST is
+Debug lines wait in an in-memory staging list until the next outbound tick bundle is
 built. Per tick, **`drain_logs_for_tick`** pulls at most **`MOD_LOG_DRAIN_PER_TICK`**
 (from the active profile) into the JSON `logs` field, then removes them from the
-mod (there is **no retry** if the POST fails; long-lived storage is viewer
+mod (there is **no retry** if the bridge round-trip fails; long-lived storage is viewer
 **localStorage**). **`LOG_STAGING_MAX`** caps backlog (oldest dropped first when
-too many lines arrive before a POST). **`development`** raises both limits and
+too many lines arrive before a successful flush). **`development`** raises both limits and
 enables chunked **SI_DUMP** logging (heavy payloads).
 
 Levels: `debug`, `info`, `error`. The staging list clears when the script reloads.

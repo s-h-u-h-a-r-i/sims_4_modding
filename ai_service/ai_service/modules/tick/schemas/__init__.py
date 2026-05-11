@@ -1,13 +1,12 @@
 """
-Pydantic schemas for the /v1/tick bridge endpoint.
+Pydantic schemas for ``/v1/tick`` (WebSocket JSON messages).
 
-Defines strict wire protocol types for HTTP serialization/deserialization. All models
-reflect the current protocol version. Amend fields and descriptions in lockstep with PROTOCOL.md.
+Defines strict wire types for serialization. Amend fields in lockstep with PROTOCOL.md.
 """
 
 from typing import Annotated, Any, Dict, List, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = (
     "DecisionItemSchema",
@@ -15,11 +14,14 @@ __all__ = (
     "OutcomeSchema",
     "TickRequestSchema",
     "TickResponseSchema",
+    "ViewerCommandWsSchema",
 )
 
 
 class DecisionItemSchema(BaseModel):
-    """One AI decision returned in POST /v1/tick (flat shape consumed by npc_ai_mod)."""
+    """One AI decision in a ``/v1/tick`` response (flat shape consumed by npc_ai_mod)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: Annotated[
         str,
@@ -44,6 +46,29 @@ class DecisionItemSchema(BaseModel):
             description='Registered action in the mod (e.g. "go_home", "summon_sim").',
         ),
     ]
+
+
+class ViewerCommandWsSchema(BaseModel):
+    """Browser viewer → ``/viewer/ws`` ``type: \"command\"`` payload (enqueue before next tick).
+
+    Canonical game-facing shape is ``DecisionItemSchema`` once the ``id`` field is assigned.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["command"]
+    action: Annotated[str, Field(..., description="Registered mod action (`registry.py`).")]
+    sim_id: Annotated[
+        int | str,
+        Field(
+            ...,
+            description="Target Sim id (string avoids JS bigint loss; mod accepts int|string).",
+        ),
+    ]
+
+    def to_decision_item(self, decision_id: str) -> DecisionItemSchema:
+        """Strip the WebSocket envelope; produce tick ``decisions[]`` wire row."""
+        return DecisionItemSchema(id=decision_id, sim_id=self.sim_id, action=self.action)
 
 
 class ModLogEntrySchema(BaseModel):
@@ -160,7 +185,7 @@ class OutcomeSchema(BaseModel):
 
 
 class TickRequestSchema(BaseModel):
-    """Payload structure for a /v1/tick POST request."""
+    """Game → server payload for each ``/v1/tick`` WebSocket text frame."""
 
     tick: Annotated[
         TickInfoSchema,

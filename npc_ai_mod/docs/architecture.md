@@ -4,7 +4,7 @@
 
 `npc_ai_mod` is a Sims 4 Python mod that bridges the game engine and a local AI
 service running on `127.0.0.1:8765`.  On each meaningful world-state change it
-POSTs a JSON payload (`/v1/tick`) describing all instanced Sims and receives
+sends JSON over **`WebSocket /v1/tick`** describing all instanced Sims and receives
 back a list of decisions the AI wants applied (e.g. send a Sim home).
 
 ```
@@ -21,15 +21,15 @@ back a list of decisions the AI wants applied (e.g. send a Sim home).
 │               debounce alarm (0.35 s quiet)         │
 │                              │                      │
 │                              ▼                      │
-│                         bridge/ (client)            │
-│                    POST /v1/tick (HTTP)              │
+│                         bridge/ (WebSocket client)  │
+│                    ws://127.0.0.1:8765/v1/tick      │
 └────────────────────────┬────────────────────────────┘
-                         │  JSON payload
+                         │  JSON payload (text frame)
                          ▼
               ┌─────────────────────┐
               │  ai_service         │
               │  127.0.0.1:8765     │
-              │  /v1/tick           │
+              │  /v1/tick (WS)       │
               └──────────┬──────────┘
                          │  {"decisions": [...]}
                          ▼
@@ -80,32 +80,32 @@ a cheap hashable tuple:
 
 If multisets alone are unchanged but co-presence wiring changes (e.g. chat ends
 but two Sims remain on the same stereo), component (3) still dirties so the bridge
-gets a POST and the viewer clears stale chips.
+ticks and the viewer clears stale chips.
 
 **Debounce** — two consecutive dirty probes arm a 0.35 s one-shot alarm.  If
-the world goes quiet the debounce fires and a POST is sent.
+the world goes quiet the debounce fires and one tick flush is scheduled.
 
 **Max-wait** — if the world churns continuously for > 4 s the director forces a
-POST regardless.
+flush regardless.
 
-**Idle keepalive** — if nothing changes for > 5 s the director sends a POST so
-that viewer commands queued server-side are delivered promptly.
+**Idle keepalive** — if nothing changes for > 5 s the director still flushes once so
+viewer commands queued server-side are picked up promptly.
 
-**Rate limiting** — a 1.25 s minimum interval between consecutive POSTs
-prevents tight POST → dirty → POST loops.
+**Rate limiting** — a 1.25 s minimum interval between consecutive successful round-trips
+prevents tight tick → dirty → tick loops.
 
 ### `bridge/` (package)
 
 | Module | Role |
 |--------|------|
-| `constants.py` | `HOST`, `PORT`, `PATH`, `TIMEOUT_SEC` |
-| `client.py` | `post_tick` — opens `http.client.HTTPConnection` per call (Sims 4 has no async I/O); returns parsed **`TickResponse`** on HTTP 200, **`None`** on error |
+| `constants.py` | `HOST`, `PORT`, `TICK_WEBSOCKET_PATH`, `TIMEOUT_SEC` |
+| `ws_tick.py` | `exchange_tick`, `reset_persistent_connection` — RFC **6455** on one persistent `socket` (text frames in/out); answers server pings while reading |
 
 | Constant | Value |
 |---|---|
 | `HOST` | `127.0.0.1` |
 | `PORT` | `8765` |
-| `PATH` | `/v1/tick` |
+| `TICK_WEBSOCKET_PATH` | `/v1/tick` |
 | `TIMEOUT_SEC` | `5` |
 
 ### `config/`
@@ -127,7 +127,7 @@ for JSON serialisation (via `schemas.wire`). Import the stable API from
 `npc_ai_mod.sim_state` — implementation is split across submodules:
 
 | Area | Module (typical) | Notes |
-|------|------------------|--------|
+|------|------------------|-------|
 | Instanced Sims | `instanced.py` | `get_instanced_sim_infos()` |
 | Per-Sim snapshot | `snapshot.py` | `serialize_sim()`, `get_world_state()` |
 | Running/queued SI rows | `serialized_interactions.py` | maps EA queues to schema types |
@@ -166,18 +166,13 @@ relative imports, e.g. `from .schemas import TickPayload`.
 
 Add a handler: implement **`apply_<name>(sim_info)`** in **`handlers/`**, import it in **`registry`**, and register the wire name.
 
-### `runtime.py`
-
-Thin wrapper around **`services.game_clock_service()`** — **`is_game_paused()`** gates
-probe/debounce and POST so we do not spam the bridge while paused.
-
 ### `logutil.py`
 
 Structured lines (`timestamp_utc`, `level`, `tag`, `message`, optional traceback)
 land in an in-memory staging list. **`LOG_STAGING_MAX`** (profile) caps backlog;
  **`drain_logs_for_tick(MOD_LOG_DRAIN_PER_TICK)`** moves up to that many entries into
  **`logs`** per tick (values defined in **`config/generated.py`** for the baked profile;
- production defaults: drain 250, staging cap 500). Viewer holds durable history; the mod drops drained lines regardless of HTTP success.
+ production defaults: drain 250, staging cap 500). Viewer holds durable history; the mod drops drained lines regardless of bridge success.
 
 Functions: `clear_session_log`, `drain_logs_for_tick`, `log_debug`, `log_info`,
 `log_error`.
@@ -230,7 +225,7 @@ string.
       "timestamp_utc": "2026-05-10T19:15:00.100000+00:00",
       "level": "info",
       "tag": "Director",
-      "message": "debounce timer fired: attempting POST after quiet period",
+      "message": "debounce timer fired: attempting tick flush after quiet period",
       "traceback": null
     }
   ]

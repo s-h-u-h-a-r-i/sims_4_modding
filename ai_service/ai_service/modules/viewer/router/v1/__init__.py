@@ -4,7 +4,9 @@ from dataclasses import asdict
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import ValidationError
 
+from ai_service.modules.tick.schemas import ViewerCommandWsSchema
 from ai_service.core.constants import STATIC_DIR
 from ai_service.deps import TickStoreDep, TickStoreWsDep, ViewerHubWsDep
 
@@ -29,10 +31,15 @@ async def viewer_ws(
                 msg_type = msg.get("type")
 
                 if msg_type == "command":
-                    store.push_command(msg)
-                    await hub.broadcast_json(
-                        hub.format_ws_snapshot(asdict(store.get_snapshot()))
-                    )
+                    try:
+                        cmd = ViewerCommandWsSchema.model_validate(msg)
+                    except ValidationError:
+                        pass
+                    else:
+                        store.push_command(cmd)
+                        await hub.broadcast_json(
+                            hub.format_ws_snapshot(asdict(store.get_snapshot()))
+                        )
 
                 elif msg_type == "set_ai_enabled":
                     store.set_ai_enabled(bool(msg.get("enabled", True)))

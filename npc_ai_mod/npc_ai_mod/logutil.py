@@ -42,7 +42,7 @@ def log_error(
 
 
 def clear_session_log() -> None:
-    """Called on script reload; wipes any lines not yet drained for a POST."""
+    """Called on script reload; wipes any lines not yet drained for a tick outbound."""
     _LOG_BUFFER.clear()
     _enqueue("info", "logutil", "Session started (game package load)")
 
@@ -52,8 +52,8 @@ def drain_logs_for_tick(
 ) -> typing.List[LogEntry]:
     """Take up to `max_entries` from the head of the pending list and remove them.
 
-    Entries are bundled on the outgoing tick body; persistence is viewer-only.
-    If the POST fails, these lines are not re-sent from the mod.
+    Entries are bundled on the outgoing tick frame; persistence is viewer-only.
+    If the bridge round-trip fails, these lines are not re-sent from the mod.
     """
     n = min(max_entries, len(_LOG_BUFFER))
     if n <= 0:
