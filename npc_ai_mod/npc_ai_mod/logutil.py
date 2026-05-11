@@ -5,11 +5,10 @@ from .utils import iso_utc_now
 
 __all__ = (
     "clear_session_log",
-    "commit_pending_logs",
+    "drain_logs_for_tick",
     "log_debug",
     "log_error",
     "log_info",
-    "peek_pending_logs",
 )
 
 _MAX_BUFFER = 500
@@ -32,24 +31,23 @@ def log_error(tag: str, detail: str, exc: Optional[BaseException] = None) -> Non
 
 
 def clear_session_log() -> None:
-    """Reset buffered log entries when the script package loads."""
+    """Called on script reload; wipes any lines not yet drained for a POST."""
     _LOG_BUFFER.clear()
     _enqueue("info", "logutil", "Session started (game package load)")
 
 
-def peek_pending_logs(max_entries: int = 200) -> List[Dict[str, Any]]:
-    """Copy up to `max_entries` from the buffer without removing them (for a tick POST draft)."""
+def drain_logs_for_tick(max_entries: int = 250) -> List[Dict[str, Any]]:
+    """Take up to `max_entries` from the head of the pending list and remove them.
+
+    Entries are bundled on the outgoing tick body; persistence is viewer-only.
+    If the POST fails, these lines are not re-sent from the mod.
+    """
     n = min(max_entries, len(_LOG_BUFFER))
-    return _LOG_BUFFER[:n]
-
-
-def commit_pending_logs(count: int) -> None:
-    """Drop the first `count` buffered entries after their POST succeeded."""
-    if count <= 0:
-        return
-    cut = min(count, len(_LOG_BUFFER))
-    del _LOG_BUFFER[:cut]
-
+    if n <= 0:
+        return []
+    batch = list(_LOG_BUFFER[:n])
+    del _LOG_BUFFER[:n]
+    return batch
 
 
 def _enqueue(
@@ -66,7 +64,3 @@ def _enqueue(
     _LOG_BUFFER.append(entry)
     while len(_LOG_BUFFER) > _MAX_BUFFER:
         _LOG_BUFFER.pop(0)
-
-
-
-

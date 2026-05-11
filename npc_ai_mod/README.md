@@ -72,12 +72,12 @@ your Mods folder (one subfolder deep is fine).
 
 ## Logging
 
-Debug output is buffered in memory and bundled on each `/v1/tick` POST as a
-JSON `logs` array (up to a per-request limit). Entries are dropped from the
-buffer only after the server responds with HTTP 200, so failures can be retried
-on the next tick. The AI service forwards those lines to the web viewer over
-WebSocket; open **Logs** there to inspect or copy entries. Levels: `debug`,
-`info`, `error`. The buffer resets when the script package reloads.
+Debug lines wait in a short in-memory staging list until the next `/v1/tick`
+POST is built: up to **250** entries are drained into the JSON `logs` field per
+request, then removed from the mod (there is **no retry** if the POST fails;
+long-lived storage is the viewer **localStorage**). If the bridge stays down,
+the staging list truncates at **500** oldest-first. Levels: `debug`, `info`,
+`error`. The staging list clears when the script package reloads.
 
 The legacy `npc_ai_mod.log` file is no longer used.
 

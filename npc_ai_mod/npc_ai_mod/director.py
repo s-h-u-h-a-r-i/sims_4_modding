@@ -9,7 +9,7 @@ import alarms
 from clock import interval_in_real_seconds
 
 from . import actions, bridge, sim_state
-from .logutil import commit_pending_logs, log_debug, log_error, log_info, peek_pending_logs
+from .logutil import drain_logs_for_tick, log_debug, log_error, log_info
 from .utils import iso_utc_now
 
 __all__ = ("director",)
@@ -229,7 +229,7 @@ class Director:
 
         try:
             payload = self._build_payload()
-            logs_batch = peek_pending_logs(250)
+            logs_batch = drain_logs_for_tick(250)
             if logs_batch:
                 payload["logs"] = logs_batch
             response = bridge.post_tick(payload)
@@ -259,7 +259,6 @@ class Director:
                         f"POST tick ({reason}): synced post-apply activity fingerprint "
                         f"(paired_match={synced is not None})",
                     )
-                commit_pending_logs(len(logs_batch))
         except Exception as exc:
             log_error(
                 "Director._flush_tick",

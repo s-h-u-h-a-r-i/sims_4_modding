@@ -100,11 +100,13 @@ serialisation.
 
 ### `logutil.py`
 
-In-memory log buffer that records structured lines (`timestamp_utc`, `level`,
-`tag`, `message`, optional traceback). Up to a fixed number of entries are
-attached to each tick POST as the JSON field `logs`; they are removed from the
-buffer only after the HTTP request succeeds. Functions: `clear_session_log`,
-`peek_pending_logs`, `commit_pending_logs`, `log_debug`, `log_info`, `log_error`.
+Structured lines (`timestamp_utc`, `level`, `tag`, `message`, optional traceback)
+land in an in-memory staging list between ticks (capped at 500; oldest dropped
+when over cap). Building a tick drains up to 250 entries into the JSON field
+`logs`; those entries are discarded in the mod — durable history is viewer-only.
+
+Functions: `clear_session_log`, `drain_logs_for_tick`, `log_debug`, `log_info`,
+`log_error`.
 
 ### `utils.py`
 Single helper: `iso_utc_now()` returns the current UTC time as an ISO 8601
