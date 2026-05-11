@@ -1,0 +1,91 @@
+/* Header */
+header {
+  padding: 0.85rem 1.35rem;
+  background: var(--grad-header-chrome);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+  margin: 0 0.75rem;
+  box-shadow: var(--shadow-float-header);
+}
+
+#status {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+#status.error {
+  color: var(--warn);
+}
+
+.ai-toggle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--fg);
+  user-select: none;
+}
+
+.toggle-btn {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--border);
+  border-radius: var(--radius-toggle);
+  border: var(--border-2-soft);
+  box-shadow: var(--shadow-inset);
+  cursor: pointer;
+  transition: var(--ease-toggle);
+  flex-shrink: 0;
+}
+
+.toggle-btn.on {
+  background: var(--grad-plumbob);
+  border-color: var(--plumbob-deep);
+  box-shadow: var(--shadow-toggle-on);
+}
+
+.toggle-btn::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: var(--shadow-knob);
+  transition: transform 0.2s ease;
+}
+
+.toggle-btn.on::after {
+  transform: translateX(20px);
+}
+
+/* ── Header — secondary actions ── */
+.header-actions {
+  flex-shrink: 0;
+}
+
+.header-ghost-btn {
+  font-size: 0.72rem;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--plumbob-deep);
+  background: var(--panel);
+  color: var(--plumbob-deep);
+  cursor: pointer;
+  box-shadow: none;
+  transition: var(--ease-btn);
+}
+
+.header-ghost-btn:hover {
+  background: var(--plumbob-tint);
+}
+
+.header-ghost-btn:active {
+  transform: translateY(1px);
+}

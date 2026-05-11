@@ -1,0 +1,239 @@
+/* Caps labels — shared type treatment */
+.tag,
+.off-lot-banner,
+.interaction-section h4,
+.int-head,
+.action-btn {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Card */
+.sim-card {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  cursor: default;
+  box-shadow: var(--shadow-card);
+  transition: var(--ease-card);
+}
+
+.sim-card:hover {
+  border-color: var(--plumbob);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.sim-card.expanded {
+  border-color: var(--plumbob-deep);
+  box-shadow: var(--shadow-card-expanded);
+}
+
+.sim-card.off-lot {
+  opacity: 0.65;
+  border-style: dashed;
+  border-color: var(--muted);
+  cursor: default;
+  box-shadow: none;
+}
+
+.sim-card.off-lot:hover {
+  border-color: var(--muted);
+  box-shadow: none;
+}
+
+.off-lot-banner {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--warn);
+  padding: 0 0 0.35rem;
+}
+
+.sim-card .info {
+  padding: 1rem 1.15rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
+.sim-card .name {
+  font-size: 0.9rem;
+  color: var(--fg);
+  letter-spacing: 0.01em;
+}
+
+.sim-card .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-tags);
+}
+
+.sim-card .detail {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.tag {
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-full);
+  border: 2px solid;
+}
+
+.tag.npc {
+  color: var(--warn);
+  border-color: var(--tag-npc-border);
+  background: var(--warn-bg);
+}
+
+.tag.player {
+  color: var(--plumbob-deep);
+  border-color: var(--plumbob);
+  background: var(--plumbob-tint);
+}
+
+.tag.age {
+  color: var(--tag-age-fg);
+  border-color: var(--tag-age-border);
+  background: var(--tag-age-tint);
+}
+
+.tag.gender {
+  color: var(--muted);
+  border-color: var(--border);
+  background: var(--panel-shade);
+}
+
+/* Expanded */
+.sim-card .expanded-body {
+  display: none;
+  padding: var(--expanded-section-gap) 1.15rem 1.15rem;
+  flex-direction: column;
+  gap: var(--expanded-section-gap);
+  border-top: 1px solid var(--border-soft);
+  background: var(--grad-expanded-body);
+  margin-top: 0;
+}
+
+.sim-card.expanded .expanded-body {
+  display: flex;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.72rem;
+}
+
+.detail-grid .dk {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.detail-grid .dv {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-actions);
+  padding-top: 0.25rem;
+}
+
+.action-btn {
+  font-size: 0.68rem;
+  font-family: inherit;
+  letter-spacing: 0.05em;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  border: var(--border-2-plumbob);
+  background: var(--grad-plumbob);
+  color: #fff;
+  text-shadow: var(--text-shadow-btn);
+  cursor: pointer;
+  box-shadow: var(--shadow-btn-3d);
+  transition: var(--ease-btn);
+}
+
+.action-btn:hover {
+  filter: brightness(1.06);
+  box-shadow: var(--shadow-btn-3d-hover);
+}
+
+.action-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-btn-3d-active);
+}
+
+.interaction-section {
+  margin-top: 0.35rem;
+}
+
+.interaction-section h4 {
+  font-size: 0.65rem;
+  letter-spacing: 0.07em;
+  color: var(--plumbob-deep);
+  margin-bottom: 0.35rem;
+}
+
+.interaction-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-interaction-list);
+}
+
+.interaction-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap-actions);
+  font-size: 0.7rem;
+}
+
+.int-pill {
+  font-size: 0.64rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-widget);
+  border: 1px solid var(--border);
+  background: var(--cream-deep);
+  color: var(--fg);
+  max-width: 100%;
+  font-weight: 600;
+}
+
+.int-head {
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: var(--plumbob-deep);
+  flex-shrink: 0;
+}
+
+.interaction-section .detail.detail--spaced {
+  margin-top: 0.25rem;
+}
+
+/* ── History button (secondary action style) ── */
+.action-btn--secondary {
+  background: var(--panel);
+  color: var(--plumbob-deep);
+  border-color: var(--plumbob);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.action-btn--secondary:hover {
+  background: var(--plumbob-tint);
+  filter: none;
+  box-shadow: none;
+}
+
+.action-btn--secondary:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}

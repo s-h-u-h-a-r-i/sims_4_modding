@@ -13,11 +13,4 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-artifacts = [
-    "ai_service/static/viewer.html",
-    "ai_service/static/viewer.css",
-    "ai_service/static/viewer/main.js",
-    "ai_service/static/viewer/prefs.js",
-    "ai_service/static/viewer/sim-model.js",
-    "ai_service/static/viewer/card-ui.js",
-]
+packages = ["ai_service"]

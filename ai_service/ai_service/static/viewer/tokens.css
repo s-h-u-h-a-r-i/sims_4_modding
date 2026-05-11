@@ -1,0 +1,87 @@
+/* ── Design tokens ── */
+:root {
+  /* Rounded UI sans — in the same family as The Sims’ soft panel type (not an official font). */
+  --font-viewer: 'Quicksand', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --cream: #f7f0e4;
+  --cream-deep: #ebe3d4;
+  --panel: #fffdf8;
+  --panel-shade: #f3ece0;
+  --fg: #3d3429;
+  --muted: #7a6e62;
+  --border: #d4c9b4;
+  --border-soft: #e5dcc8;
+  --plumbob: #6cb43c;
+  --plumbob-bright: #8fd65a;
+  --plumbob-deep: #4a8f28;
+  --plumbob-hover-top: #9bdf6a;
+  --plumbob-glow: rgba(108, 180, 60, 0.35);
+  --plumbob-tint: rgba(108, 180, 60, 0.12);
+  --accent: var(--plumbob-deep);
+  --warn: #c9782e;
+  --warn-bg: #fdf3e8;
+  --tag-npc-border: #e0a060;
+  --tag-age-fg: #2a7d86;
+  --tag-age-border: #5cb8c4;
+  --tag-age-tint: rgba(92, 184, 196, 0.12);
+  --green: var(--plumbob);
+  --red: #c44a4a;
+  --shadow: rgba(61, 52, 41, 0.12);
+  --shadow-deep: rgba(61, 52, 41, 0.2);
+  --shadow-toggle-ring: rgba(74, 143, 40, 0.25);
+  --white-face: rgba(255, 255, 255, 0.35);
+  --body-vignette-green: rgba(143, 214, 90, 0.18);
+  --body-vignette-cream: rgba(235, 227, 212, 0.9);
+  --body-grad-bottom: #dfd6c4;
+  --expanded-body-fade: rgba(243, 236, 224, 0.5);
+
+  --radius-full: 999px;
+  --radius-card: 16px;
+  --radius-panel: 14px;
+  --radius-toggle: 12px;
+  --radius-widget: 8px;
+
+  --scrollbar-size: 11px;
+  --gap-sm: 0.55rem;
+  --gap-md: 1rem;
+  --gap-tags: 0.4rem;
+  --gap-actions: 0.45rem;
+  --gap-interaction-list: 0.35rem;
+  --expanded-section-gap: 0.75rem;
+
+  --ease-card: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+  --ease-toggle: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  --ease-btn: filter 0.15s, transform 0.1s, box-shadow 0.15s;
+
+  --grad-plumbob: linear-gradient(180deg, var(--plumbob-bright), var(--plumbob));
+  --grad-plumbob-pressed: linear-gradient(180deg, var(--plumbob), var(--plumbob-deep));
+  --grad-plumbob-hover: linear-gradient(180deg, var(--plumbob-hover-top), var(--plumbob-bright));
+  --grad-panel-track: linear-gradient(180deg, var(--panel-shade), var(--cream-deep));
+  --grad-header-chrome: linear-gradient(
+    180deg,
+    var(--plumbob-bright) 0,
+    var(--plumbob) 3px,
+    var(--panel) 3px,
+    var(--panel-shade) 100%
+  );
+  --grad-expanded-body: linear-gradient(180deg, var(--expanded-body-fade), transparent);
+  --grad-body-bg:
+    radial-gradient(ellipse 120% 80% at 50% -20%, var(--body-vignette-green), transparent 55%),
+    radial-gradient(ellipse 90% 60% at 100% 100%, var(--body-vignette-cream), transparent 45%),
+    linear-gradient(165deg, var(--cream) 0%, var(--cream-deep) 48%, var(--body-grad-bottom) 100%);
+
+  --shadow-inset: inset 0 1px 2px var(--shadow);
+  --shadow-face: inset 0 1px 0 var(--white-face), 0 1px 2px var(--shadow);
+  --shadow-toggle-on: inset 0 1px 0 var(--white-face), 0 0 0 1px var(--shadow-toggle-ring);
+  --shadow-card: 0 3px 10px var(--shadow);
+  --shadow-card-hover: 0 4px 16px var(--shadow), 0 0 0 3px var(--plumbob-glow);
+  --shadow-card-expanded: 0 6px 20px var(--shadow-deep), 0 0 0 3px var(--plumbob-glow);
+  --shadow-float-header: 0 4px 14px var(--shadow);
+  --shadow-knob: 0 1px 3px var(--shadow-deep);
+  --shadow-btn-3d: 0 2px 0 var(--plumbob-deep), 0 3px 8px var(--shadow);
+  --shadow-btn-3d-hover: 0 2px 0 var(--plumbob-deep), 0 4px 12px var(--plumbob-glow);
+  --shadow-btn-3d-active: 0 1px 0 var(--plumbob-deep);
+  --text-shadow-btn: 0 1px 0 rgba(0, 0, 0, 0.15);
+
+  --border-2-plumbob: 2px solid var(--plumbob-deep);
+  --border-2-soft: 2px solid var(--border-soft);
+}

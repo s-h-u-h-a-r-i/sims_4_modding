@@ -1,0 +1,75 @@
+/* ── Reset ── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--plumbob) var(--panel-shade);
+}
+
+/* ── Utilities ── */
+.u-flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.u-flex-center {
+  display: flex;
+  align-items: center;
+}
+.u-gap-md {
+  gap: var(--gap-md);
+}
+.u-gap-sm {
+  gap: var(--gap-sm);
+}
+.u-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.u-font-mono {
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--grad-body-bg);
+  color: var(--fg);
+  font-family: var(--font-viewer);
+  font-size: 0.875rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbars — WebKit */
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--grad-panel-track);
+  border-radius: var(--radius-full);
+  border: var(--border-2-soft);
+  box-shadow: var(--shadow-inset);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--grad-plumbob);
+  border-radius: var(--radius-full);
+  border: var(--border-2-plumbob);
+  box-shadow: var(--shadow-face);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--grad-plumbob-hover);
+  border-color: var(--plumbob-deep);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--grad-plumbob-pressed);
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--cream-deep);
+}
