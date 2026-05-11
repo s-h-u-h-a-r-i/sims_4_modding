@@ -342,7 +342,7 @@ export function updateCardOffLot(card) {
   const sim = card._viewerLastSim;
   const info = card.querySelector('.info');
   if (sim) {
-    fillInfoFromSim(info, sim, 'Left lot');
+    fillInfoFromSim(info, sim, null);
     info.title = '';
     const full = simDisplayName(sim);
     info.setAttribute('role', 'button');

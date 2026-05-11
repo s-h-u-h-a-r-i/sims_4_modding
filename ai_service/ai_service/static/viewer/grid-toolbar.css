@@ -54,6 +54,149 @@ main {
   min-width: 0;
 }
 
+.sim-grid-stack {
+  display: flex;
+  flex-direction: column;
+  /* Breathing room: upper grid, then dashed rule, then lower grid */
+  gap: 2rem;
+}
+
+/* Off-lot block wraps a <details>; collapsed by default in markup */
+.sim-grid-region--offlot {
+  display: block;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.sim-grid-region--offlot[hidden] {
+  display: none !important;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.sim-offlot-details {
+  border-radius: var(--radius-widget);
+}
+
+/* Sims-ish dropdown toggle: collapsed = light panel + dark text + black down-arrow (right).
+   Expanded = green bar + white label + white up-arrow. */
+.sim-offlot-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  list-style: none;
+  cursor: pointer;
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-widget);
+  border: 2px solid var(--border);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.sim-offlot-summary::-webkit-details-marker {
+  display: none;
+}
+
+.sim-offlot-summary::marker {
+  content: none;
+}
+
+.sim-offlot-summary:focus {
+  outline: none;
+}
+
+.sim-offlot-summary:focus-visible {
+  outline: 2px solid var(--warn);
+  outline-offset: 2px;
+}
+
+/* ── Collapsed ── */
+.sim-offlot-details:not([open]) .sim-offlot-summary {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--cream-deep) 100%);
+  box-shadow: var(--shadow-inset);
+}
+
+.sim-offlot-details:not([open]) .sim-lot-divider__label {
+  color: var(--fg);
+}
+
+.sim-offlot-details:not([open]) .sim-lot-divider__chev {
+  color: #000;
+}
+
+.sim-offlot-details:not([open]) .sim-offlot-summary:hover {
+  border-color: var(--plumbob);
+}
+
+.sim-offlot-details:not([open]) .sim-offlot-summary:hover .sim-lot-divider__label,
+.sim-offlot-details:not([open]) .sim-offlot-summary:hover .sim-lot-divider__chev {
+  color: var(--plumbob-deep);
+}
+
+/* ── Expanded (open) ── */
+.sim-offlot-details[open] .sim-offlot-summary {
+  background: var(--grad-plumbob);
+  border-color: var(--plumbob-deep);
+  box-shadow:
+    inset 0 1px 0 var(--white-face),
+    0 1px 5px var(--shadow);
+}
+
+.sim-offlot-details[open] .sim-offlot-summary:hover {
+  background: var(--grad-plumbob-hover);
+  border-color: var(--plumbob-deep);
+}
+
+.sim-offlot-details[open] .sim-lot-divider__label {
+  color: #fff;
+  text-shadow: var(--text-shadow-btn);
+}
+
+.sim-offlot-details[open] .sim-lot-divider__chev {
+  color: #fff;
+  opacity: 0.95;
+  text-shadow: var(--text-shadow-btn);
+}
+
+.sim-lot-divider__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  line-height: 1.25;
+}
+
+/* Down when closed, up when open (same glyph rotated) */
+.sim-lot-divider__chev {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.85rem;
+  font-size: 0.5rem;
+  line-height: 1;
+  margin-left: 0.15rem;
+  transform-origin: center;
+  transition: transform 0.18s ease, color 0.15s ease;
+}
+
+.sim-offlot-details[open] .sim-lot-divider__chev {
+  transform: rotate(180deg);
+}
+
+/* Space below bar when expanded */
+.sim-offlot-details[open] .sim-grid-offlot {
+  margin-top: 1.1rem;
+}
+
 .sim-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

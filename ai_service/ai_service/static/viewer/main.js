@@ -20,6 +20,8 @@ import {
 
 const statusEl = document.getElementById('status');
 const simGrid = document.getElementById('simGrid');
+const simGridOffLot = document.getElementById('simGridOffLot');
+const simGridOffLotRegion = document.getElementById('simGridOffLotRegion');
 const aiToggle = document.getElementById('aiToggle');
 const aiLabel = document.getElementById('aiLabel');
 
@@ -167,8 +169,10 @@ function applyTickFrame(data) {
 }
 
 /**
- * Expanded on-lot first, then other on-lot, then off-lot. Within each tier, order
- * follows `sortMode`; hidden sims (per `filterMode`) sort after visible ones.
+ * Present sims render in `#simGrid`; off-lot sims in `#simGridOffLot` below with spacing.
+ *
+ * Expanded on-lot first, then other on-lot, then off-lot. Within each tier, order follows
+ * `sortMode`; hidden sims (per `filterMode`) sort after visible ones.
  */
 function reorderSimGrid(sims) {
   const tickOrder = buildTickOrder(sims);
@@ -178,18 +182,38 @@ function reorderSimGrid(sims) {
     if (card.classList.contains('expanded')) return 0;
     return 1;
   };
-  cards.sort((a, b) => {
-    const pa = filterPasses(a, filterMode) ? 0 : 1;
-    const pb = filterPasses(b, filterMode) ? 0 : 1;
-    if (pa !== pb) return pa - pb;
-    const ta = tierOf(a);
-    const tb = tierOf(b);
-    if (ta !== tb) return ta - tb;
-    return sortCompareCards(a, b, sortMode, tickOrder);
-  });
-  for (const c of cards) {
+
+  /** @type {(group: HTMLElement[]) => void} */
+  const sortInGroup = (group) => {
+    group.sort((a, b) => {
+      const pa = filterPasses(a, filterMode) ? 0 : 1;
+      const pb = filterPasses(b, filterMode) ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      const ta = tierOf(a);
+      const tb = tierOf(b);
+      if (ta !== tb) return ta - tb;
+      return sortCompareCards(a, b, sortMode, tickOrder);
+    });
+  };
+
+  const onLot = cards.filter((c) => c.dataset.present !== '0');
+  const offLot = cards.filter((c) => c.dataset.present === '0');
+  sortInGroup(onLot);
+  sortInGroup(offLot);
+
+  for (const c of onLot) {
     c.hidden = !filterPasses(c, filterMode);
     simGrid.appendChild(c);
+  }
+  for (const c of offLot) {
+    c.hidden = !filterPasses(c, filterMode);
+    simGridOffLot.appendChild(c);
+  }
+
+  const showOffLotRegion =
+    offLot.length > 0 && offLot.some((c) => filterPasses(c, filterMode));
+  if (simGridOffLotRegion) {
+    simGridOffLotRegion.hidden = !showOffLotRegion;
   }
 }
 

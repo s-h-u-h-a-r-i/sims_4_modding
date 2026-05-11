@@ -54,7 +54,19 @@
           </select>
         </label>
       </div>
-      <div class="sim-grid" id="simGrid"></div>
+      <div class="sim-grid-stack">
+        <div class="sim-grid" id="simGrid"></div>
+        <div class="sim-grid-region sim-grid-region--offlot" id="simGridOffLotRegion" hidden>
+          <!-- No `open` attribute: collapsed by default; hides off-lot card grid until expanded -->
+          <details class="sim-offlot-details">
+            <summary class="sim-offlot-summary">
+              <span class="sim-lot-divider__label">Not on this lot</span>
+              <span class="sim-lot-divider__chev" aria-hidden="true">&#9660;</span>
+            </summary>
+            <div class="sim-grid sim-grid-offlot" id="simGridOffLot"></div>
+          </details>
+        </div>
+      </div>
     </main>
 
     <aside
