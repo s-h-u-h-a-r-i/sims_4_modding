@@ -24,17 +24,16 @@ and data-flow diagrams.
 
 ```
 npc_ai_mod/
-├── src/
-│   └── npc_ai_mod/        # mod source package (deployed as .ts4script)
-│       ├── __init__.py
-│       ├── hooks.py        # game-engine monkey-patches
-│       ├── director.py     # probe/debounce/tick orchestration
-│       ├── bridge.py       # HTTP client → ai_service
-│       ├── sim_state.py    # game-state readers & fingerprinting
-│       ├── logutil.py      # file logger
-│       └── utils.py        # UTC timestamp helper
+├── npc_ai_mod/           # mod source package (deployed as .ts4script)
+│   ├── __init__.py
+│   ├── hooks.py          # game-engine monkey-patches
+│   ├── director.py       # probe/debounce/tick orchestration
+│   ├── bridge.py         # HTTP client → ai_service
+│   ├── sim_state.py      # game-state readers & fingerprinting
+│   ├── logutil.py        # in-memory debug log shipped with ticks → viewer
+│   └── utils.py          # UTC timestamp helper
 ├── scripts/
-│   └── build.py            # packages src/ into dist/npc_ai_mod.ts4script
+│   └── build.py          # packages npc_ai_mod/ into dist/npc_ai_mod.ts4script
 ├── docs/
 │   └── architecture.md
 ├── pyproject.toml
@@ -73,9 +72,14 @@ your Mods folder (one subfolder deep is fine).
 
 ## Logging
 
-The mod writes to `npc_ai_mod.log` in the same directory as the `.ts4script`
-archive. The log is cleared on each game session start. Levels: `DEBUG`,
-`INFO`, `ERROR`.
+Debug output is buffered in memory and bundled on each `/v1/tick` POST as a
+JSON `logs` array (up to a per-request limit). Entries are dropped from the
+buffer only after the server responds with HTTP 200, so failures can be retried
+on the next tick. The AI service forwards those lines to the web viewer over
+WebSocket; open **Logs** there to inspect or copy entries. Levels: `debug`,
+`info`, `error`. The buffer resets when the script package reloads.
+
+The legacy `npc_ai_mod.log` file is no longer used.
 
 ## AI service
 

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <script>
@@ -23,9 +23,14 @@
   <body>
     <header class="u-flex-between u-gap-md">
       <div id="status">Connecting…</div>
-      <div class="ai-toggle u-flex-center u-gap-sm">
-        <span id="aiLabel">AI</span>
-        <button type="button" class="toggle-btn" id="aiToggle" title="Toggle AI"></button>
+      <div class="header-actions u-flex-center u-gap-sm">
+        <button type="button" class="header-ghost-btn" id="modLogToggle" title="Mod log stream">
+          Logs
+        </button>
+        <div class="ai-toggle u-flex-center u-gap-sm">
+          <span id="aiLabel">AI</span>
+          <button type="button" class="toggle-btn" id="aiToggle" title="Toggle AI"></button>
+        </div>
       </div>
     </header>
     <main>
@@ -51,6 +56,40 @@
       </div>
       <div class="sim-grid" id="simGrid"></div>
     </main>
+
+    <aside
+      id="modLogPanel"
+      class="mod-log-panel"
+      aria-hidden="true"
+      aria-label="Mod debug log"
+    >
+      <div class="mod-log-panel-header">
+        <h2 class="mod-log-title">Mod log</h2>
+        <button type="button" class="mod-log-close-btn" id="modLogClose" title="Hide">
+          ×
+        </button>
+      </div>
+      <div class="mod-log-toolbar">
+        <div class="mod-log-toolbar-btns">
+          <button type="button" class="action-btn action-btn--secondary" id="modLogClear">
+            Clear history
+          </button>
+          <button type="button" class="action-btn" id="modLogCopyAll" title="Copies lines that match the minimum level filter">
+            Copy all
+          </button>
+        </div>
+        <label class="toolbar-field mod-log-min-field">
+          <span class="toolbar-label">Min level</span>
+          <select id="modLogMinLevel" class="toolbar-select" title="Show this severity and more severe (like Cloud Logging)">
+            <option value="debug">All · debug+</option>
+            <option value="info">Info · info+</option>
+            <option value="error">Error only</option>
+          </select>
+        </label>
+        <span class="mod-log-count" id="modLogCount"></span>
+      </div>
+      <div class="mod-log-list" id="modLogList"></div>
+    </aside>
 
     <script>
       (function () {

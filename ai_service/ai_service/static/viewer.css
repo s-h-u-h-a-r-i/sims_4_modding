@@ -2,6 +2,8 @@
 
 /* ── Design tokens ── */
 :root {
+  /* Rounded UI sans — in the same family as The Sims’ soft panel type (not an official font). */
+  --font-viewer: 'Quicksand', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --cream: #f7f0e4;
   --cream-deep: #ebe3d4;
   --panel: #fffdf8;
@@ -124,12 +126,7 @@ body {
   min-height: 100vh;
   background: var(--grad-body-bg);
   color: var(--fg);
-  font-family:
-    'Nunito',
-    'Segoe UI',
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-viewer);
   font-size: 0.875rem;
   -webkit-font-smoothing: antialiased;
 }
@@ -247,7 +244,7 @@ main {
 
 .toolbar-label {
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--plumbob-deep);
@@ -310,7 +307,7 @@ main {
 .interaction-section h4,
 .int-head,
 .action-btn {
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -580,7 +577,7 @@ dialog#history-dialog::backdrop {
 
 .history-dlg-title {
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--fg);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -686,4 +683,241 @@ dialog#history-dialog::backdrop {
   color: var(--muted);
   border-color: var(--border);
   background: var(--panel-shade);
+}
+
+/* ── Header — secondary actions ── */
+.header-actions {
+  flex-shrink: 0;
+}
+
+.header-ghost-btn {
+  font-size: 0.72rem;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--plumbob-deep);
+  background: var(--panel);
+  color: var(--plumbob-deep);
+  cursor: pointer;
+  box-shadow: none;
+  transition: var(--ease-btn);
+}
+
+.header-ghost-btn:hover {
+  background: var(--plumbob-tint);
+}
+
+.header-ghost-btn:active {
+  transform: translateY(1px);
+}
+
+/* ── Mod log panel (drawer) ── */
+.mod-log-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  /* Fixed height so the list gets a real flex-bounded viewport (#modLogList scrollTop works). */
+  height: min(44vh, 420px);
+  max-height: min(44vh, 420px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  box-shadow: 0 -6px 24px var(--shadow-deep);
+  transform: translateY(calc(100% + 8px));
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.mod-log-panel.open {
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.mod-log-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem 0.55rem;
+  flex-shrink: 0;
+  background: var(--grad-header-chrome);
+  border-bottom: 1px solid var(--border);
+}
+
+.mod-log-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.mod-log-close-btn {
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  transition: color 0.15s;
+}
+
+.mod-log-close-btn:hover {
+  color: var(--fg);
+}
+
+.mod-log-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gap-sm) var(--gap-md);
+  padding: 0.45rem 1rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--panel-shade);
+}
+
+.mod-log-toolbar-btns {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  flex-wrap: wrap;
+}
+
+.mod-log-toolbar .toolbar-field {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.mod-log-toolbar .toolbar-field .toolbar-select {
+  min-width: 9.5rem;
+  max-width: 14rem;
+}
+
+.mod-log-toolbar .action-btn {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.32rem 0.65rem;
+  border-radius: var(--radius-widget);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.mod-log-count {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.mod-log-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.55rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mod-log-empty {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.mod-log-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-widget);
+  border: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, var(--cream) 0%, var(--panel-shade) 100%);
+}
+
+.mod-log-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  font-size: 0.65rem;
+}
+
+.mod-log-ts {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.mod-log-level {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.58rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+}
+
+.mod-log-level--debug {
+  color: var(--muted);
+  background: var(--panel-shade);
+}
+
+.mod-log-level--info {
+  color: var(--tag-age-fg);
+  border-color: var(--tag-age-border);
+  background: var(--tag-age-tint);
+}
+
+.mod-log-level--error {
+  color: var(--red);
+  border-color: var(--red);
+  background: rgba(196, 74, 74, 0.12);
+}
+
+.mod-log-tag {
+  max-width: 12rem;
+  font-weight: 700;
+  color: var(--plumbob-deep);
+}
+
+.mod-log-msg {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fg);
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+  margin: 0;
+}
+
+.mod-log-trace {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--muted);
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-widget);
+  background: var(--cream-deep);
+  border: 1px solid var(--border-soft);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  line-height: 1.4;
 }

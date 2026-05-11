@@ -16,6 +16,7 @@ import {
   sortCompareCards,
   stableSimId,
 } from './sim-model.js';
+import { initModLogPanel, routeViewerMessage } from './mod-logs.js';
 
 const statusEl = document.getElementById('status');
 const simGrid = document.getElementById('simGrid');
@@ -162,7 +163,9 @@ function connect() {
   };
   ws.onmessage = (ev) => {
     try {
-      applySnapshot(JSON.parse(ev.data));
+      const data = JSON.parse(ev.data);
+      if (routeViewerMessage(data)) return;
+      applySnapshot(data);
     } catch (e) {
       statusEl.textContent = String(e);
       statusEl.className = 'error';
@@ -205,4 +208,5 @@ function initViewerControls() {
 }
 
 initViewerControls();
+initModLogPanel();
 connect();

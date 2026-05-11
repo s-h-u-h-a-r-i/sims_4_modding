@@ -42,6 +42,34 @@ class ViewerBroadcastHub:
         except RuntimeError:
             pass
 
+    def publish_mod_logs_threadsafe(self, entries: list[dict[str, Any]]) -> None:
+        if not entries:
+            return
+        loop = self._loop
+        queue = self._queue
+        if loop is None or queue is None:
+            return
+
+        payload = {"type": "mod_logs", "entries": entries}
+
+        def _try_put() -> None:
+            try:
+                queue.put_nowait(payload)
+            except asyncio.QueueFull:
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+                try:
+                    queue.put_nowait(payload)
+                except asyncio.QueueFull:
+                    pass
+
+        try:
+            loop.call_soon_threadsafe(_try_put)
+        except RuntimeError:
+            pass
+
     async def run_broadcast_consumer(self) -> None:
         assert self._queue is not None
         while True:

@@ -52,8 +52,7 @@ def build() -> None:
 
     # PyZipFile.writepy compiles .py → .pyc under the running Python version
     # (must be 3.7 — use `uv run python scripts/build.py`) and stores them with
-    # full archive-relative paths, which makes __file__ inside the zip include
-    # the archive path so log file resolution works correctly.
+    # full archive-relative paths so __file__ inside the zip includes the archive path.
     with PyZipFile(ARCHIVE_PATH, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writepy(SRC_DIR)
 

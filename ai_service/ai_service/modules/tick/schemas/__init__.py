@@ -9,7 +9,33 @@ from typing import Annotated, Any, Dict, List, Literal
 
 from pydantic import BaseModel, Field
 
-__all__ = ("OutcomeSchema", "TickRequestSchema", "TickResponseSchema")
+__all__ = ("ModLogEntrySchema", "OutcomeSchema", "TickRequestSchema", "TickResponseSchema")
+
+
+class ModLogEntrySchema(BaseModel):
+    timestamp_utc: Annotated[
+        str,
+        Field(..., description="UTC time when the log line was produced (ISO 8601)."),
+    ]
+    level: Annotated[
+        Literal["debug", "info", "error"],
+        Field(..., description="Severity for display and filtering in the viewer."),
+    ]
+    tag: Annotated[
+        str,
+        Field(default="", description="Short source label from the game mod."),
+    ]
+    message: Annotated[
+        str,
+        Field(default="", description="Human-readable detail."),
+    ]
+    traceback: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Optional stack trace or exception repr for errors.",
+        ),
+    ]
 
 
 class TickInfoSchema(BaseModel):
@@ -107,6 +133,15 @@ class TickRequestSchema(BaseModel):
             description=(
                 "Outcomes for decisions dispatched in the previous tick response. "
                 "Empty on the first tick or when no decisions were sent."
+            ),
+        ),
+    ]
+    logs: Annotated[
+        List[ModLogEntrySchema],
+        Field(
+            default_factory=list,
+            description=(
+                "Buffered log lines from the game mod; forwarded to the viewer over WebSocket."
             ),
         ),
     ]

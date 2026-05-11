@@ -1,59 +1,72 @@
-import os
 import traceback
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
-__all__ = ("clear_session_log", "log_debug", "log_info", "log_error")
+from .utils import iso_utc_now
 
-FILE_LOG_NAME = "npc_ai_mod.log"
+__all__ = (
+    "clear_session_log",
+    "commit_pending_logs",
+    "log_debug",
+    "log_error",
+    "log_info",
+    "peek_pending_logs",
+)
 
-
-def _file_log_path() -> str:
-    # With .pyc files in the archive, zipimport sets __file__ to the full on-disk
-    # path including the archive name, e.g.:
-    #   C:\...\Mods\npc_ai_mod\npc_ai_mod.ts4script\npc_ai_mod\logutil.pyc
-    # Split on os.sep and find the .ts4script segment to locate the sibling log.
-    norm = os.path.normpath(os.path.abspath(__file__))
-    parts = norm.split(os.sep)
-    for i, segment in enumerate(parts):
-        if segment.lower().endswith(".ts4script"):
-            archive_path = os.sep.join(parts[: i + 1])
-            parent = os.path.dirname(archive_path)
-            return os.path.join(parent, FILE_LOG_NAME)
-    # Loose scripts (no ts4script in path): log next to this package.
-    return os.path.join(os.path.dirname(norm), FILE_LOG_NAME)
-
-
-def _append(body: str) -> None:
-    path = _file_log_path()
-    try:
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write(body)
-            if not body.endswith("\n"):
-                fh.write("\n")
-    except OSError:
-        pass
-
-
-def clear_session_log() -> None:
-    """Truncate companion log beside the ``.ts4script`` (each package load)."""
-    path = _file_log_path()
-    try:
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write("Session log started (package load)\n")
-    except OSError:
-        pass
+_MAX_BUFFER = 500
+_LOG_BUFFER: List[Dict[str, Any]] = []
 
 
 def log_debug(tag: str, detail: str) -> None:
-    _append(f"[DEBUG/{tag}] {detail}")
+    _enqueue("debug", tag, detail)
 
 
 def log_info(tag: str, detail: str) -> None:
-    _append(f"[{tag}] {detail}")
+    _enqueue("info", tag, detail)
 
 
 def log_error(tag: str, detail: str, exc: Optional[BaseException] = None) -> None:
-    body = f"[ERROR/{tag}] {detail}"
+    tb: Optional[str] = None
     if exc is not None:
-        body = f"{body}\n{exc!r}\n{traceback.format_exc()}"
-    _append(body)
+        tb = f"{exc!r}\n{traceback.format_exc()}"
+    _enqueue("error", tag, detail, tb)
+
+
+def clear_session_log() -> None:
+    """Reset buffered log entries when the script package loads."""
+    _LOG_BUFFER.clear()
+    _enqueue("info", "logutil", "Session started (game package load)")
+
+
+def peek_pending_logs(max_entries: int = 200) -> List[Dict[str, Any]]:
+    """Copy up to `max_entries` from the buffer without removing them (for a tick POST draft)."""
+    n = min(max_entries, len(_LOG_BUFFER))
+    return _LOG_BUFFER[:n]
+
+
+def commit_pending_logs(count: int) -> None:
+    """Drop the first `count` buffered entries after their POST succeeded."""
+    if count <= 0:
+        return
+    cut = min(count, len(_LOG_BUFFER))
+    del _LOG_BUFFER[:cut]
+
+
+
+def _enqueue(
+    level: str, tag: str, message: str, traceback_text: Optional[str] = None
+) -> None:
+    entry: Dict[str, Any] = {
+        "timestamp_utc": iso_utc_now(),
+        "level": level,
+        "tag": tag,
+        "message": message,
+    }
+    if traceback_text:
+        entry["traceback"] = traceback_text
+    _LOG_BUFFER.append(entry)
+    while len(_LOG_BUFFER) > _MAX_BUFFER:
+        _LOG_BUFFER.pop(0)
+
+
+
+

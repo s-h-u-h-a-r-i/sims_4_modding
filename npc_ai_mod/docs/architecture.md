@@ -99,9 +99,12 @@ serialisation.
 - **`fingerprint_diff()`** — human-readable delta for debug logging.
 
 ### `logutil.py`
-File logger that writes beside the `.ts4script` archive (or beside the package
-directory when running loose scripts during development).  Four functions:
-`clear_session_log`, `log_debug`, `log_info`, `log_error`.
+
+In-memory log buffer that records structured lines (`timestamp_utc`, `level`,
+`tag`, `message`, optional traceback). Up to a fixed number of entries are
+attached to each tick POST as the JSON field `logs`; they are removed from the
+buffer only after the HTTP request succeeds. Functions: `clear_session_log`,
+`peek_pending_logs`, `commit_pending_logs`, `log_debug`, `log_info`, `log_error`.
 
 ### `utils.py`
 Single helper: `iso_utc_now()` returns the current UTC time as an ISO 8601
@@ -137,7 +140,16 @@ string.
         "interactions_queue": []
       }
     ]
-  }
+  },
+  "logs": [
+    {
+      "timestamp_utc": "2026-05-10T19:15:00.100000+00:00",
+      "level": "info",
+      "tag": "Director",
+      "message": "debounce timer fired: attempting POST after quiet period",
+      "traceback": null
+    }
+  ]
 }
 ```
 
