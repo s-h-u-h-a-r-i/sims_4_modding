@@ -31,33 +31,28 @@ def verbose_si_dump_for_actor(
 ) -> None:
     _ensure_verbose_dump_log_capacity()
 
-    actor = "%s|%s|%s" % (
-        str(sim_info.id),
-        str(sim_info.first_name),
-        str(sim_info.last_name),
-    )
+    actor = f"{str(sim_info.id)}|{str(sim_info.first_name)}|{str(sim_info.last_name)}"
     log_debug(
         "SI_DUMP",
-        "[%s] prelude social_partner_sim_ids=%s — dir() sweep"
-        % (actor, list(social_partner_ids)),
+        f"[{actor}] prelude social_partner_sim_ids={list(social_partner_ids)} — dir() sweep",
     )
 
     sis_labeled: typing.List[typing.Tuple[str, SuperInteraction]] = []
     try:
         for i, si in enumerate(sim.si_state.sis_actor_gen()):
             if isinstance(si, SuperInteraction):
-                sis_labeled.append(("run|%s" % i, si))
+                sis_labeled.append((f"run|{i}", si))
     except Exception as exc:
-        log_debug("SI_DUMP", "[%s] run_iterate_failed=%s" % (actor, exc))
+        log_debug("SI_DUMP", f"[{actor}] run_iterate_failed={exc}")
 
     try:
         queue = sim.queue
         if queue is not None:
             for i, si in enumerate(queue):
                 if isinstance(si, SuperInteraction):
-                    sis_labeled.append(("q|%s" % i, si))
+                    sis_labeled.append((f"q|{i}", si))
     except Exception as exc:
-        log_debug("SI_DUMP", "[%s] queue_iterate_failed=%s" % (actor, exc))
+        log_debug("SI_DUMP", f"[{actor}] queue_iterate_failed={exc}")
 
     parts = 0
     chars_budget = 0
@@ -79,14 +74,7 @@ def verbose_si_dump_for_actor(
         chars_budget += len(blob)
         log_debug(
             "SI_DUMP",
-            "[%s] part=%s %s chars_budget=%s |%s"
-            % (
-                actor,
-                parts,
-                note,
-                chars_budget,
-                blob,
-            ),
+            f"[{actor}] part={parts} {note} chars_budget={chars_budget} |{blob}",
         )
         slab = []
         slab_chars = 0
@@ -116,8 +104,7 @@ def verbose_si_dump_for_actor(
     if aborted_reason:
         log_debug(
             "SI_DUMP",
-            "[%s] TRUNCATED reason=%s parts=%s ~chars=%s"
-            % (actor, aborted_reason, parts, chars_budget),
+            f"[{actor}] TRUNCATED reason={aborted_reason} parts={parts} ~chars={chars_budget}",
         )
 
 
@@ -132,35 +119,32 @@ def _ensure_verbose_dump_log_capacity() -> None:
 def _squash_repr(val: typing.Any, soft: int = _ATTR_REPR_SOFT) -> str:
     try:
         if isinstance(val, SimInfo):
-            return "SimInfo(id=%s cls=%s)" % (val.id, val.__class__.__name__)
+            return f"SimInfo(id={val.id} cls={val.__class__.__name__})"
         if isinstance(val, Sim):
             sid = getattr(val, "id", "?")
-            return "Sim(id=%s cls=%s)" % (sid, val.__class__.__name__)
+            return f"Sim(id={sid} cls={val.__class__.__name__})"
         if isinstance(val, SuperInteraction):
-            return "SuperInteraction(cls=%s id=%s pyid=%s)" % (
-                val.__class__.__name__,
-                getattr(val, "id", "?"),
-                id(val),
+            return (
+                f"SuperInteraction(cls={val.__class__.__name__} "
+                f"id={getattr(val, 'id', '?')} pyid={id(val)})"
             )
         if isinstance(val, dict):
             if len(val) <= 18:
                 s = repr(val)
             else:
                 ks = ",".join(repr(k) for k in list(val.keys())[:42])
-                s = "{dict len=%s keys=%s}" % (len(val), ks[: soft - 26])
+                s = f"{{dict len={len(val)} keys={ks[: soft - 26]}}}"
         elif isinstance(val, (frozenset, set, tuple, list)):
-            s = "%s[len=%s] %s" % (
-                type(val).__name__,
-                len(val),
-                repr(tuple(val)[:12])[: soft - 32],
-            )
+            tn = type(val).__name__
+            inner = repr(tuple(val)[:12])[: soft - 32]
+            s = f"{tn}[len={len(val)}] {inner}"
         else:
             s = repr(val)
     except Exception as exc:
-        return "<reprfail %s>" % (exc,)
+        return f"<reprfail {exc}>"
     if len(s) <= soft:
         return s
-    return "%s…[%s chars]" % (s[:soft], len(s))
+    return f"{s[:soft]}…[{len(s)} chars]"
 
 
 def _lines_for_super_interaction(
@@ -168,17 +152,11 @@ def _lines_for_super_interaction(
 ) -> typing.Iterator[str]:
     cls = si.__class__.__name__
     si_ea_id = getattr(si, "id", "?")
-    yield "%%% where={} seq={} class={} si.id={} pyid={}".format(
-        where,
-        seq,
-        cls,
-        si_ea_id,
-        id(si),
-    )
+    yield f"%%% where={where} seq={seq} class={cls} si.id={si_ea_id} pyid={id(si)}"
     try:
         names = sorted(dir(si))
     except Exception as exc:
-        yield "### dir(si) failed: %s" % (exc,)
+        yield f"### dir(si) failed: {exc}"
         return
 
     for name in names:
@@ -187,18 +165,18 @@ def _lines_for_super_interaction(
         try:
             val = getattr(si, name)
         except Exception as exc:
-            yield "%s=<getter %s>" % (name, exc)
+            yield f"{name}=<getter {exc}>"
             continue
         try:
             if callable(val):
                 qn = getattr(val, "__qualname__", None) or getattr(val, "__name__", "?")
-                yield "%s=<callable %s>" % (name, qn)
+                yield f"{name}=<callable {qn}>"
                 continue
         except Exception:
             pass
         try:
             txt = _squash_repr(val)
         except Exception as exc:
-            yield "%s=<squashfail %s>" % (name, exc)
+            yield f"{name}=<squashfail {exc}>"
             continue
-        yield "%s=%s" % (name, txt)
+        yield f"{name}={txt}"

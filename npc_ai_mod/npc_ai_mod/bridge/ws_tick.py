@@ -79,14 +79,14 @@ def _open_session() -> _WsSession:
     try:
         key = base64.b64encode(os.urandom(16)).decode("ascii")
         req = (
-            "GET {path} HTTP/1.1\r\n"
-            "Host: {host}:{port}\r\n"
+            f"GET {TICK_WEBSOCKET_PATH} HTTP/1.1\r\n"
+            f"Host: {HOST}:{PORT}\r\n"
             "Upgrade: websocket\r\n"
             "Connection: Upgrade\r\n"
-            "Sec-WebSocket-Key: {key}\r\n"
+            f"Sec-WebSocket-Key: {key}\r\n"
             "Sec-WebSocket-Version: 13\r\n"
             "\r\n"
-        ).format(path=TICK_WEBSOCKET_PATH, host=HOST, port=PORT, key=key)
+        )
         sock.sendall(req.encode("latin-1"))
         tail = _consume_http_upgrade_head(sock)
         return _WsSession(sock, tail)
@@ -111,7 +111,7 @@ def _recv_text_message(sess: _WsSession) -> str:
             continue
         if opcode == _OP_CLOSE:
             raise OSError("WebSocket closed by peer")
-        raise OSError("unsupported WebSocket frame opcode={}".format(opcode))
+        raise OSError(f"unsupported WebSocket frame opcode={opcode}")
 
 
 def _read_frame(sess: _WsSession) -> typing.Tuple[int, bytes]:
@@ -146,7 +146,7 @@ def _consume_http_upgrade_head(sock: socket.socket) -> bytes:
     parts = first_line.split()
     if len(parts) < 2 or parts[1] != "101":
         raise OSError(
-            "WebSocket handshake expected HTTP 101, got {!r}".format(first_line)
+            f"WebSocket handshake expected HTTP 101, got {first_line!r}"
         )
     return tail
 

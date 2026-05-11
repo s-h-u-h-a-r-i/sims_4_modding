@@ -23,6 +23,10 @@ The editor may open **`sims_4_modding`**, **`npc_ai_mod`**, and **`ai_service`**
 - The **mod** runs inside **The Sims 4** (Python **3.7**). Do not use 3.8+ syntax in mod code unless you have a clear compatibility story.
 - Imports such as `services`, `distributor`, `sims`, `interactions` come from the **game**, not PyPI. If something is missing from the type checker, add or extend **`stubs/`**, do not add fake runtime packages.
 
+## Python style (agents)
+
+- Prefer **formatted string literals** (`f"..."`) when building strings with embedded values (valid from Python 3.6 onward). Do not default to `"...".format(...)` or `%` formatting in code you write or edit; reserve those only when matching an established pattern already dominant in the same module.
+
 ## Stubs (`stubs/`) — no “quick sketches”
 
 Stubs exist so editors and Pyright/mypy can verify mod code **without** pretending the full game is importable locally.

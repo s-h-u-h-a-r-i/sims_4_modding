@@ -112,8 +112,8 @@ class Director:
             ):
                 log_debug(
                     "Director.probe",
-                    "idle keepalive: {}s since last successful tick flush "
-                    "(queued viewer commands)".format(_MAX_IDLE_TICK_REAL_SECONDS),
+                    f"idle keepalive: {_MAX_IDLE_TICK_REAL_SECONDS}s since last successful tick flush "
+                    "(queued viewer commands)",
                 )
                 self._flush_tick("idle_keepalive")
                 return
