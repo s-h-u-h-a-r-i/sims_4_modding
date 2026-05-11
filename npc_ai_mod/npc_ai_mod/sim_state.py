@@ -1,8 +1,8 @@
 """
 sim_state.py — read and serialize NPC Sim data.
 
-Responsible for collecting the current state of NPC Sims and returning it
-as plain dicts suitable for JSON serialisation and sending to the AI service.
+Responsible for collecting the current state of NPC Sims and returning
+serialisable snapshots (see ``schemas``) for the AI bridge.
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from interactions.base.super_interaction import SuperInteraction
 from sims.sim import Sim
 from sims.sim_info import SimInfo
 
+from .schemas import QueuedInteraction, RunningInteraction, SerializedSim, WorldState
+
 # Affordance-class multiset: sorted (class __name__, count) pairs from a sim's SI state.
 ClassMultiset = typing.Tuple[typing.Tuple[str, int], ...]
 SimFingerprintRow = typing.Tuple[int, ClassMultiset, ClassMultiset]
@@ -23,45 +25,6 @@ WorldFingerprint = typing.Tuple[
     typing.Optional[int],
     typing.Tuple[SimFingerprintRow, ...],
 ]
-
-
-def _serialize_super_interaction(si: SuperInteraction) -> typing.Dict[str, typing.Any]:
-    """Minimal snapshot for the viewer (and future cancel by id)."""
-    return {
-        "interaction_id": int(si.id),
-        "interaction_id_str": str(si.id),
-        "class_name": si.__class__.__name__,
-    }
-
-
-def _interactions_for_sim(
-    sim: Sim,
-) -> typing.Dict[str, typing.List[typing.Dict[str, typing.Any]]]:
-    """What the sim is running now vs what is queued (per EA interaction_commands patterns)."""
-    running: typing.List[typing.Dict[str, typing.Any]] = []
-    queued: typing.List[typing.Dict[str, typing.Any]] = []
-
-    try:
-        for si in sim.si_state.sis_actor_gen():
-            running.append(_serialize_super_interaction(si))
-    except Exception:
-        pass
-
-    try:
-        queue = sim.queue
-        if queue is not None:
-            head = getattr(queue, "running", None)
-            for si in queue:
-                row = _serialize_super_interaction(si)
-                row["is_queue_head"] = bool(head is not None and si is head)
-                queued.append(row)
-    except Exception:
-        pass
-
-    return {
-        "interactions_running": running,
-        "interactions_queue": queued,
-    }
 
 
 def get_instanced_sim_infos() -> typing.List[SimInfo]:
@@ -79,93 +42,32 @@ def get_instanced_sim_infos() -> typing.List[SimInfo]:
     return result
 
 
-def serialize_sim(sim_info: SimInfo) -> typing.Dict[str, typing.Any]:
-    """Convert a SimInfo into a JSON-serialisable dict."""
-    out: typing.Dict[str, typing.Any] = {
-        "sim_id": int(sim_info.id),
-        "sim_id_str": str(sim_info.id),
-        "first_name": str(sim_info.first_name),
-        "last_name": str(sim_info.last_name),
-        "age": sim_info.age.name if sim_info.age is not None else None,
-        "gender": sim_info.gender.name if sim_info.gender is not None else None,
-        "is_npc": bool(sim_info.is_npc),
-        "household_id": (
-            int(sim_info.household_id) if sim_info.household_id is not None else None
-        ),
-        "zone_id": int(sim_info.zone_id) if sim_info.zone_id is not None else None,
-    }
+def serialize_sim(sim_info: SimInfo) -> SerializedSim:
+    """Convert a SimInfo into a structured snapshot for the bridge."""
+    running: typing.List[RunningInteraction] = []
+    queued: typing.List[QueuedInteraction] = []
     try:
         sim = sim_info.get_sim_instance()
         if sim is not None:
-            out.update(_interactions_for_sim(sim))
-        else:
-            out["interactions_running"] = []
-            out["interactions_queue"] = []
-    except Exception:
-        out["interactions_running"] = []
-        out["interactions_queue"] = []
-    return out
-
-
-# Affordance class names/prefixes excluded from the activity fingerprint.
-# These are engine-internal cycling interactions that churn every few seconds
-# and carry no signal for AI decisions.
-_FP_EXCLUDE_EXACT: frozenset = frozenset(
-    {
-        "Emotion_Idle",
-        "stand_Passive",
-        "sit_Passive",
-        "SocialPickerSI",  # social picker ticks every ~1.5s as engine background loop
-    }
-)
-_FP_EXCLUDE_PREFIXES: typing.Tuple[str, ...] = (
-    "Idle_",  # idle overlay animations  (Idle_Age_Teen, etc.)
-    "idle_",  # lifestyle / mood idles   (idle_Lifestyles_*, etc.)
-    "aggregate_",  # background observers     (aggregate_SocialObservation_*, etc.)
-    "reactions_",  # reaction overlays cycle on/off while underlying action continues
-)
-
-
-def _fp_class_is_noise(name: str) -> bool:
-    return name in _FP_EXCLUDE_EXACT or name.startswith(_FP_EXCLUDE_PREFIXES)
-
-
-def _si_fingerprint_slices(sim: Sim) -> typing.Tuple[ClassMultiset, ClassMultiset]:
-    """
-    Running vs queued **class multisets** (how many of each non-noise affordance class).
-
-    Noise classes (idle overlays, passive stances, social picker engine loops) are
-    excluded so the fingerprint only changes on meaningful gameplay transitions.
-    """
-    run_c: Counter[str] = Counter()
-    try:
-        for si in sim.si_state.sis_actor_gen():
-            try:
-                name = si.__class__.__name__
-                if not _fp_class_is_noise(name):
-                    run_c[name] += 1
-            except Exception:
-                pass
+            running, queued = _interactions_for_sim(sim)
     except Exception:
         pass
-    run_tup = tuple(sorted(run_c.items()))
 
-    q_c: Counter[str] = Counter()
-    try:
-        q = sim.queue
-        if q is not None:
-            for si in q:
-                try:
-                    name = si.__class__.__name__
-                    if not _fp_class_is_noise(name):
-                        q_c[name] += 1
-                except Exception:
-                    pass
-    except Exception:
-        pass
-    q_tup = tuple(sorted(q_c.items()))
-
-    return (run_tup, q_tup)
+    return SerializedSim(
+        sim_id=int(sim_info.id),
+        sim_id_str=str(sim_info.id),
+        first_name=str(sim_info.first_name),
+        last_name=str(sim_info.last_name),
+        age=sim_info.age.name if sim_info.age is not None else None,
+        gender=sim_info.gender.name if sim_info.gender is not None else None,
+        is_npc=bool(sim_info.is_npc),
+        household_id=(
+            int(sim_info.household_id) if sim_info.household_id is not None else None
+        ),
+        zone_id=int(sim_info.zone_id) if sim_info.zone_id is not None else None,
+        interactions_running=running,
+        interactions_queue=queued,
+    )
 
 
 def world_activity_fingerprint() -> WorldFingerprint:
@@ -223,7 +125,7 @@ def world_activity_fingerprint_if_stable() -> typing.Optional[WorldFingerprint]:
     return None
 
 
-def get_world_state() -> typing.Dict[str, typing.Any]:
+def get_world_state() -> WorldState:
     """Collect full world snapshot: all instanced Sims + zone/lot context."""
     zone_id: typing.Optional[int] = None
     lot_id: typing.Optional[int] = None
@@ -242,11 +144,117 @@ def get_world_state() -> typing.Dict[str, typing.Any]:
     except Exception:
         pass
 
-    sims: typing.List[typing.Dict[str, typing.Any]] = []
+    sims: typing.List[SerializedSim] = []
     for sim_info in get_instanced_sim_infos():
         try:
             sims.append(serialize_sim(sim_info))
         except Exception:
             pass
 
-    return {"lot_id": lot_id, "zone_id": zone_id, "sims": sims}
+    return WorldState(lot_id=lot_id, zone_id=zone_id, sims=sims)
+
+
+def _serialize_running_interaction(si: SuperInteraction) -> RunningInteraction:
+    """Minimal snapshot for the viewer (and future cancel by id)."""
+    return RunningInteraction(
+        interaction_id=int(si.id),
+        interaction_id_str=str(si.id),
+        class_name=si.__class__.__name__,
+    )
+
+
+def _interactions_for_sim(
+    sim: Sim,
+) -> typing.Tuple[
+    typing.List[RunningInteraction],
+    typing.List[QueuedInteraction],
+]:
+    """What the sim is running now vs what is queued (per EA interaction_commands patterns)."""
+    running: typing.List[RunningInteraction] = []
+    queued: typing.List[QueuedInteraction] = []
+
+    try:
+        for si in sim.si_state.sis_actor_gen():
+            running.append(_serialize_running_interaction(si))
+    except Exception:
+        pass
+
+    try:
+        queue = sim.queue
+        if queue is not None:
+            head = getattr(queue, "running", None)
+            for si in queue:
+                base = _serialize_running_interaction(si)
+                queued.append(
+                    QueuedInteraction(
+                        interaction_id=base.interaction_id,
+                        interaction_id_str=base.interaction_id_str,
+                        class_name=base.class_name,
+                        is_queue_head=bool(head is not None and si is head),
+                    )
+                )
+    except Exception:
+        pass
+
+    return running, queued
+
+
+# Affordance class names/prefixes excluded from the activity fingerprint.
+# These are engine-internal cycling interactions that churn every few seconds
+# and carry no signal for AI decisions.
+_FP_EXCLUDE_EXACT: frozenset = frozenset(
+    {
+        "Emotion_Idle",
+        "stand_Passive",
+        "sit_Passive",
+        "SocialPickerSI",  # social picker ticks every ~1.5s as engine background loop
+    }
+)
+_FP_EXCLUDE_PREFIXES: typing.Tuple[str, ...] = (
+    "Idle_",  # idle overlay animations  (Idle_Age_Teen, etc.)
+    "idle_",  # lifestyle / mood idles   (idle_Lifestyles_*, etc.)
+    "aggregate_",  # background observers     (aggregate_SocialObservation_*, etc.)
+    "reactions_",  # reaction overlays cycle on/off while underlying action continues
+)
+
+
+def _si_fingerprint_slices(sim: Sim) -> typing.Tuple[ClassMultiset, ClassMultiset]:
+    """
+    Running vs queued **class multisets** (how many of each non-noise affordance class).
+
+    Noise classes (idle overlays, passive stances, social picker engine loops) are
+    excluded so the fingerprint only changes on meaningful gameplay transitions.
+    """
+
+    def _fp_class_is_noise(name: str) -> bool:
+        return name in _FP_EXCLUDE_EXACT or name.startswith(_FP_EXCLUDE_PREFIXES)
+
+    run_c: Counter[str] = Counter()
+    try:
+        for si in sim.si_state.sis_actor_gen():
+            try:
+                name = si.__class__.__name__
+                if not _fp_class_is_noise(name):
+                    run_c[name] += 1
+            except Exception:
+                pass
+    except Exception:
+        pass
+    run_tup = tuple(sorted(run_c.items()))
+
+    q_c: Counter[str] = Counter()
+    try:
+        q = sim.queue
+        if q is not None:
+            for si in q:
+                try:
+                    name = si.__class__.__name__
+                    if not _fp_class_is_noise(name):
+                        q_c[name] += 1
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    q_tup = tuple(sorted(q_c.items()))
+
+    return (run_tup, q_tup)

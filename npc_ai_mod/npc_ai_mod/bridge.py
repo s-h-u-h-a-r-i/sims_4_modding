@@ -3,6 +3,7 @@ import json
 import typing
 
 from .logutil import log_error
+from .schemas import TickPayload, TickResponse, parse_tick_response, tick_payload_to_wire
 
 __all__ = ("post_tick",)
 
@@ -13,9 +14,9 @@ TIMEOUT_SEC = 5
 
 
 def post_tick(
-    payload: typing.Dict[str, typing.Any],
-) -> typing.Optional[typing.Dict[str, typing.Any]]:
-    body = json.dumps(payload)
+    payload: TickPayload,
+) -> typing.Optional[TickResponse]:
+    body = json.dumps(tick_payload_to_wire(payload))
     conn = http.client.HTTPConnection(HOST, PORT, timeout=TIMEOUT_SEC)
     try:
         conn.request(
@@ -37,7 +38,14 @@ def post_tick(
             )
 
             return None
-        return json.loads(raw.decode("utf-8"))
+        parsed = json.loads(raw.decode("utf-8"))
+        if not isinstance(parsed, dict):
+            log_error(
+                "bridge.post_tick",
+                "response JSON is not an object",
+            )
+            return None
+        return parse_tick_response(parsed)
     except (
         OSError,
         http.client.HTTPException,

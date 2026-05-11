@@ -1,18 +1,11 @@
 import traceback
 import typing
 
+from .schemas import LogEntry
 from .utils import iso_utc_now
 
-__all__ = (
-    "clear_session_log",
-    "drain_logs_for_tick",
-    "log_debug",
-    "log_error",
-    "log_info",
-)
-
 _MAX_BUFFER = 500
-_LOG_BUFFER: typing.List[typing.Dict[str, typing.Any]] = []
+_LOG_BUFFER: typing.List[LogEntry] = []
 
 
 def log_debug(tag: str, detail: str) -> None:
@@ -40,7 +33,7 @@ def clear_session_log() -> None:
 
 def drain_logs_for_tick(
     max_entries: int = 250,
-) -> typing.List[typing.Dict[str, typing.Any]]:
+) -> typing.List[LogEntry]:
     """Take up to `max_entries` from the head of the pending list and remove them.
 
     Entries are bundled on the outgoing tick body; persistence is viewer-only.
@@ -57,14 +50,13 @@ def drain_logs_for_tick(
 def _enqueue(
     level: str, tag: str, message: str, traceback_text: typing.Optional[str] = None
 ) -> None:
-    entry: typing.Dict[str, typing.Any] = {
-        "timestamp_utc": iso_utc_now(),
-        "level": level,
-        "tag": tag,
-        "message": message,
-    }
-    if traceback_text:
-        entry["traceback"] = traceback_text
+    entry = LogEntry(
+        timestamp_utc=iso_utc_now(),
+        level=level,
+        tag=tag,
+        message=message,
+        traceback=traceback_text,
+    )
     _LOG_BUFFER.append(entry)
     while len(_LOG_BUFFER) > _MAX_BUFFER:
         _LOG_BUFFER.pop(0)

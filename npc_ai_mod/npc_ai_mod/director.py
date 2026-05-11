@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import time
 import typing
+from dataclasses import replace
 
 import alarms
 from alarms import AlarmHandle
@@ -14,10 +15,9 @@ from clock import interval_in_real_seconds
 from . import actions, bridge, sim_state
 from .logutil import drain_logs_for_tick, log_debug, log_error, log_info
 from .runtime import is_game_paused
+from .schemas import DecisionOutcome, TickInfo, TickPayload
 from .sim_state import WorldFingerprint
 from .utils import iso_utc_now
-
-__all__ = ("director",)
 
 # How often we compare fingerprints (game activity probe, real wall clock).
 _PROBE_REAL_SECONDS = 0.75
@@ -40,38 +40,6 @@ _MAX_IDLE_POST_REAL_SECONDS = 5.0
 _MIN_POST_INTERVAL_REAL_S = 1.25
 
 
-def _fingerprint_diff(
-    old: typing.Optional[WorldFingerprint],
-    new: typing.Optional[WorldFingerprint],
-) -> str:
-    """Human-readable delta between fingerprints — Director debug logging only."""
-    if old is None:
-        return "(no previous fingerprint)"
-    if new is None:
-        return "(new fingerprint is None)"
-    old_sims = {row[0]: row for row in old[2]}
-    new_sims = {row[0]: row for row in new[2]}
-    parts: typing.List[str] = []
-    if old[:2] != new[:2]:
-        parts.append(f"zone/lot {old[:2]} → {new[:2]}")
-    all_ids = sorted(set(old_sims) | set(new_sims))
-    for sid in all_ids:
-        o = old_sims.get(sid)
-        n = new_sims.get(sid)
-        if o is None:
-            parts.append(f"sim {sid} appeared")
-        elif n is None:
-            parts.append(f"sim {sid} left")
-        else:
-            o_run, o_q = o[1], o[2]
-            n_run, n_q = n[1], n[2]
-            if o_run != n_run:
-                parts.append(f"sim {sid} running {dict(o_run)} → {dict(n_run)}")
-            if o_q != n_q:
-                parts.append(f"sim {sid} queued {dict(o_q)} → {dict(n_q)}")
-    return "; ".join(parts) if parts else "(no visible diff)"
-
-
 # ---------------------------------------------------------------------------
 # Director
 # ---------------------------------------------------------------------------
@@ -89,7 +57,7 @@ class Director:
         self._consecutive_clean_probes: int = 0
         self._debug_unchanged_probe_streak: int = 0
         self._last_post_monotonic: typing.Optional[float] = None
-        self._pending_outcomes: typing.List[typing.Dict[str, typing.Any]] = []
+        self._pending_outcomes: typing.List[DecisionOutcome] = []
 
     # ------------------------------------------------------------------
     # Zone lifecycle
@@ -224,17 +192,15 @@ class Director:
             return fp
         return sim_state.world_activity_fingerprint()
 
-    def _build_payload(self) -> typing.Dict[str, typing.Any]:
+    def _build_payload(self) -> TickPayload:
         self._tick_seq += 1
         outcomes = self._pending_outcomes
         self._pending_outcomes = []
-        payload: typing.Dict[str, typing.Any] = {
-            "tick": {"id": self._tick_seq, "timestamp_utc": iso_utc_now()},
-            "world": sim_state.get_world_state(),
-        }
-        if outcomes:
-            payload["outcomes"] = outcomes
-        return payload
+        return TickPayload(
+            tick=TickInfo(id=self._tick_seq, timestamp_utc=iso_utc_now()),
+            world=sim_state.get_world_state(),
+            outcomes=outcomes,
+        )
 
     def _flush_tick(self, reason: typing.Optional[str] = None) -> None:
         if is_game_paused():
@@ -268,7 +234,7 @@ class Director:
             payload = self._build_payload()
             logs_batch = drain_logs_for_tick(250)
             if logs_batch:
-                payload["logs"] = logs_batch
+                payload = replace(payload, logs=logs_batch)
             response = bridge.post_tick(payload)
             if response:
                 self._dirty_since = None
@@ -277,7 +243,7 @@ class Director:
                 self._consecutive_clean_probes = 0
                 self._debug_unchanged_probe_streak = 0
                 self._last_post_monotonic = time.monotonic()
-                decisions = response.get("decisions") or []
+                decisions = response.decisions
                 if decisions:
                     log_info(
                         "Director",
@@ -343,6 +309,38 @@ class _ManagedAlarm:
             except Exception:
                 pass
             self._handle = None
+
+
+def _fingerprint_diff(
+    old: typing.Optional[WorldFingerprint],
+    new: typing.Optional[WorldFingerprint],
+) -> str:
+    """Human-readable delta between fingerprints — Director debug logging only."""
+    if old is None:
+        return "(no previous fingerprint)"
+    if new is None:
+        return "(new fingerprint is None)"
+    old_sims = {row[0]: row for row in old[2]}
+    new_sims = {row[0]: row for row in new[2]}
+    parts: typing.List[str] = []
+    if old[:2] != new[:2]:
+        parts.append(f"zone/lot {old[:2]} → {new[:2]}")
+    all_ids = sorted(set(old_sims) | set(new_sims))
+    for sid in all_ids:
+        o = old_sims.get(sid)
+        n = new_sims.get(sid)
+        if o is None:
+            parts.append(f"sim {sid} appeared")
+        elif n is None:
+            parts.append(f"sim {sid} left")
+        else:
+            o_run, o_q = o[1], o[2]
+            n_run, n_q = n[1], n[2]
+            if o_run != n_run:
+                parts.append(f"sim {sid} running {dict(o_run)} → {dict(n_run)}")
+            if o_q != n_q:
+                parts.append(f"sim {sid} queued {dict(o_q)} → {dict(n_q)}")
+    return "; ".join(parts) if parts else "(no visible diff)"
 
 
 director = Director()
