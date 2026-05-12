@@ -1,6 +1,8 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+__all__ = ("settings",)
+
 
 class BridgeSettings(BaseSettings):
     """Uvicorn options for the local bridge. Env: ``NPC_AI_BRIDGE_*``."""
@@ -16,14 +18,6 @@ class BridgeSettings(BaseSettings):
     host: str = Field(default="127.0.0.1")
     port: int = Field(default=8765, ge=1, le=65535)
     reload: bool = Field(default=False)
-    ws_ping_interval: float | None = Field(
-        default=None,
-        description=(
-            "If set, Uvicorn sends WebSocket ping frames this often. "
-            "None disables (npc_ai_mod only reads the socket during each tick)."
-        ),
-    )
-    ws_ping_timeout: float | None = Field(
-        default=None,
-        description="Seconds to wait for pong after a ping; use with ws_ping_interval.",
-    )
+
+
+settings = BridgeSettings()

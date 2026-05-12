@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from ai_service import __version__
-from ai_service.core.settings import BridgeSettings
+from ai_service.core.settings import settings
 from ai_service.modules.tick.router import tick_v1_router
 from ai_service.modules.tick.services import TickStore
 from ai_service.modules.viewer.router import STATIC_DIR, viewer_v1_router
@@ -60,20 +60,14 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "npc_ai.bridge"}
 
 
-def run_dev_server(settings: BridgeSettings | None = None) -> None:
-    """Run uvicorn from :class:`BridgeSettings` (env ``NPC_AI_BRIDGE_*``, optional ``.env``)."""
+if __name__ == "__main__":
     import uvicorn
 
-    s = settings or BridgeSettings()
     uvicorn.run(
         "ai_service.__main__:app",
-        host=s.host,
-        port=s.port,
-        ws_ping_interval=s.ws_ping_interval,
-        ws_ping_timeout=s.ws_ping_timeout,
-        reload=s.reload,
+        host=settings.host,
+        port=settings.port,
+        ws_ping_interval=None,
+        ws_ping_timeout=None,
+        reload=settings.reload,
     )
-
-
-if __name__ == "__main__":
-    run_dev_server()

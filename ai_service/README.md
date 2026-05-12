@@ -25,9 +25,7 @@ uv sync
 uv run python -m ai_service.__main__
 ```
 
-Configuration uses **Pydantic Settings**: env vars ``NPC_AI_BRIDGE_*`` and optional ``ai_service/.env`` (see [``.env.example``](.env.example)). Defaults disable WebSocket auto-ping so the game's persistent tick client does not hit *keepalive ping timeout* (1011). Do not start with plain ``uvicorn`` unless you pass the same ping settings.
-
-Uvicorn's CLI cannot set ping interval to ``None``; use this module or ``uvicorn.run(...)`` with the same fields as ``ai_service.settings.BridgeSettings``.
+``python -m ai_service.__main__`` starts Uvicorn with **WebSocket auto-ping disabled** (the mod only reads ``/v1/tick`` during each exchange; default Uvicorn pings yield *keepalive ping timeout*, 1011). Host, port, and reload come from **Pydantic Settings**: env ``NPC_AI_BRIDGE_*`` and optional ``ai_service/.env`` (see [``.env.example``](.env.example)). If you start plain ``uvicorn`` elsewhere, pass ``ws_ping_interval=None`` and ``ws_ping_timeout=None`` or you will break the game client.
 
 Smoke check:
 
